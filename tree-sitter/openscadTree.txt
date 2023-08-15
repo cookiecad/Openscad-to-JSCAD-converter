@@ -1,468 +1,660 @@
 source_file
-//edwin: Now 100% compatible with original. 
+// Thread diameter, measured on outside of thread
 <
   comment
 >
-//I also configured the gridsize for a bambulabs printer. (10 x 10 cells)
-<
-  comment
->
-/*[ Hex unit size ]*/
-<
-  comment
->
-//Depth of the grid
-<
-  comment
->
-depth = 8
+outer_thread_diameter = 52
 <
   assignment
     identifier
     number
 >
-//Width of the hexagon's hole (flat side to flat side)
+// Total height of the trap
 <
   comment
 >
-hole_width = 20
+height = 55
 <
   assignment
     identifier
     number
 >
-//Thickness of the wall forming each hexagon
+// Number of intertwined threads
 <
   comment
 >
-wall_thickness = 1.8
+thread_starts = 4
 <
   assignment
     identifier
     number
 >
-/*[ Grid size settings ]*/
+// Thread height = the inside height of the lid section. I found 11 mm to be reasonably universal
 <
   comment
 >
-max_grid_width=211
+lid_inner_height = 11
 <
   assignment
     identifier
     number
 >
-max_grid_height=248
+/* [ Output options ] */
+<
+  comment
+>
+// How detailed the model will be rendered. A circle will have at most 360/fa segments
+<
+  comment
+>
+fa_final = 2
 <
   assignment
     identifier
     number
 >
-/*[ Grid shape ]*/
+// How detailed the model will be rendered. Maximum size of a circle segment fs. 
 <
   comment
 >
-//If checked, ignores custom column sizes and fills grid to maximum size.
+fs_final = 0.2
+<
+  assignment
+    identifier
+    number
+>
+// Same settings, but for preview
 <
   comment
 >
-fill=true
+fa_preview = 9
 <
   assignment
     identifier
-    boolean
+    number
 >
-flip_staggering=true
+fs_preview = 0.5
 <
   assignment
     identifier
-    boolean
+    number
 >
-//Amount of hexagons per column. Each entry defines a one column, where the number specifies the amount of hex units that will be generated for the respective column. (Ignored if "fill" is checked)
+$fa = $preview ? fa_preview : fa_final
+<
+  assignment
+    special_variable
+    ternary_expression
+      special_variable
+      identifier
+      identifier
+>
+$fs = $preview ? fs_preview : fs_final
+<
+  assignment
+    special_variable
+    ternary_expression
+      special_variable
+      identifier
+      identifier
+>
+  module_declaration
+_customizer_end
+<
+    identifier
+>
+()
+<
+    parameters_declaration
+>
+{}
+<
+    union_block
+>
+// Some constants you might want to tweak
 <
   comment
 >
-columns=[3,5,8,6,4,3,4,5,6]
+CLEARANCE = 0.5
 <
   assignment
     identifier
-    list
-      number
-      number
-      number
-      number
-      number
-      number
-      number
-      number
-      number
+    number
 >
-include_offsets=false
-<
-  assignment
-    identifier
-    boolean
->
-//Optional: Offset for each column. This will ignore grid size limits.
+// Chamfer along the outside
 <
   comment
 >
-column_offsets=[0,-2,-3,-1,0,2,4]
+CHAMFER = 0.6
 <
   assignment
     identifier
-    list
-      number
-      unary_expression
-        number
-      unary_expression
-        number
-      unary_expression
-        number
-      number
-      number
-      number
+    number
 >
-include_gaps=false
-<
-  assignment
-    identifier
-    boolean
->
-//Optional: Gaps for each column. *NOTE: Change these values in the code. Seems like 2D vector parameters aren't supported by the parameter editor and are always overwritten by the defaults.
+// Width of the inside of the rim
 <
   comment
 >
-column_gaps=[[], [3,4], [4,5], [2]]
+RIM_WIDTH = 5.5
 <
   assignment
     identifier
-    list
-      list
-      list
-        number
-        number
-      list
-        number
-        number
-      list
-        number
+    number
 >
-/*[ Flat edges ]*/
+// All walls have equal thickness
 <
   comment
 >
-edge_left = false
+WALL_THICKNESS = 1.2
 <
   assignment
     identifier
-    boolean
+    number
 >
-edge_top = false
+THREAD_DEPTH = 1.5
 <
   assignment
     identifier
-    boolean
+    number
 >
-edge_right = false
-<
-  assignment
-    identifier
-    boolean
->
-edge_bottom = false
-<
-  assignment
-    identifier
-    boolean
->
-//Calculated global variables
+// Angle of the flat section of the thread profile
 <
   comment
 >
-//Hexagon dimensions
+THREAD_ANGLE = 35
+<
+  assignment
+    identifier
+    number
+>
+// Radius of the tip of the thread profile
 <
   comment
 >
-hex_inner_r = hole_width/sqrt(3)
+THREAD_TIP_RADIUS = 0.7
+<
+  assignment
+    identifier
+    number
+>
+// I foun that most jars have a thread pitch of ~14, but the value does not seem to matter much
+<
+  comment
+>
+THREAD_PITCH = 14
+<
+  assignment
+    identifier
+    number
+>
+THREAD_HALF_BASE_WIDTH = THREAD_TIP_RADIUS * cos(THREAD_ANGLE) + (THREAD_DEPTH - THREAD_TIP_RADIUS * sin(THREAD_ANGLE)) * tan(THREAD_ANGLE)
 <
   assignment
     identifier
     binary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          number
->
-//Inner radius/side length (center to point)
-<
-  comment
->
-hex_h=hole_width+wall_thickness*2
-<
-  assignment
-    identifier
-    binary_expression
-      identifier
       binary_expression
         identifier
-        number
->
-//Outer side to side distance
-<
-  comment
->
-hex_s=hex_h/sqrt(3)
-<
-  assignment
-    identifier
-    binary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          number
->
-//Outer radius/side length 
-<
-  comment
->
-hex_d=2*hex_s
-<
-  assignment
-    identifier
-    binary_expression
-      number
-      identifier
->
-//Outer diameter (point to point)
-<
-  comment
->
-hex_t=hex_s/2
-<
-  assignment
-    identifier
-    binary_expression
-      identifier
-      number
->
-//Grid dimensions
-<
-  comment
->
-max_grid_hexagons_x = fill? floor(max_grid_width/(hex_d-hex_t) +(edge_left?0.5:0) +(edge_right?0.5:0)): len(columns)
-<
-  assignment
-    identifier
-    ternary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          binary_expression
-            binary_expression
-              binary_expression
-                identifier
-                parenthesized_expression
-                  binary_expression
-                    identifier
-                    identifier
-              parenthesized_expression
-                ternary_expression
-                  identifier
-                  number
-                  number
-            parenthesized_expression
-              ternary_expression
-                identifier
-                number
-                number
-      function_call
-        identifier
-        arguments
+        function_call
           identifier
->
-max_grid_hexagons_y = fill? floor(max_grid_height/hex_h +(edge_top?0.5:0) +(edge_bottom?0.5:0)): max(columns)
-<
-  assignment
-    identifier
-    ternary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          binary_expression
-            binary_expression
-              binary_expression
-                identifier
-                identifier
-              parenthesized_expression
-                ternary_expression
-                  identifier
-                  number
-                  number
-            parenthesized_expression
-              ternary_expression
-                identifier
-                number
-                number
-      function_call
-        identifier
-        arguments
-          identifier
->
-max_grid_hexagons_y_lo = fill? floor(max_grid_height/hex_h - 0.5 +(edge_top?0.5:0) +(edge_bottom?0.5:0)): (max(columns) - 0.5)
-<
-  assignment
-    identifier
-    ternary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          binary_expression
-            binary_expression
-              binary_expression
-                binary_expression
-                  identifier
-                  identifier
-                number
-              parenthesized_expression
-                ternary_expression
-                  identifier
-                  number
-                  number
-            parenthesized_expression
-              ternary_expression
-                identifier
-                number
-                number
-      parenthesized_expression
-        binary_expression
-          function_call
+          arguments
             identifier
-            arguments
-              identifier
-          number
->
-total_width = max_grid_hexagons_x * (hex_d-hex_t) + hex_t
-<
-  assignment
-    identifier
-    binary_expression
       binary_expression
-        identifier
         parenthesized_expression
           binary_expression
             identifier
+            binary_expression
+              identifier
+              function_call
+                identifier
+                arguments
+                  identifier
+        function_call
+          identifier
+          arguments
             identifier
-      identifier
 >
-total_height = hex_h*max(max_grid_hexagons_y - 0.5, max_grid_hexagons_y_lo)
+// This determines how long each of the thread fragments on the lid are 
+<
+  comment
+>
+THREAD_HEIGHT = 0.8
 <
   assignment
     identifier
-    binary_expression
-      identifier
-      function_call
-        identifier
-        arguments
-          binary_expression
-            identifier
-            number
-          identifier
+    number
 >
-translate([edge_left?0:hex_s, edge_top?0:-hex_h/2, 0])
-grid(columns, include_offsets?column_offsets:[], include_gaps?column_gaps:[], depth, hole_width, wall_thickness, fill);
+PERFORATION_HOLE_HEIGHT = 3
+<
+  assignment
+    identifier
+    number
+>
+PERFORATION_HOLE_WIDTH = 0.6
+<
+  assignment
+    identifier
+    number
+>
+PERFORATION_DISTANCE_V = 2
+<
+  assignment
+    identifier
+    number
+>
+PERFORATION_DISTANCE_H = 3
+<
+  assignment
+    identifier
+    number
+>
+// Radius of hole at the bottom where the guests are welcomed
+<
+  comment
+>
+ENTRANCE_RADIUS = 1.8
+<
+  assignment
+    identifier
+    number
+>
+fruitfly_trap(
+  outer_thread_diameter = outer_thread_diameter,
+  lid_inner_height = lid_inner_height,
+  thread_starts = thread_starts,
+  height = height
+);
 <
   transform_chain
     module_call
       identifier
       arguments
-        list
-          ternary_expression
-            identifier
-            number
-            identifier
-          ternary_expression
-            identifier
-            number
-            unary_expression
-              binary_expression
-                identifier
-                number
-          number
-    transform_chain
-      module_call
-        identifier
-        arguments
-          identifier
-          ternary_expression
-            identifier
-            identifier
-            list
-          ternary_expression
-            identifier
-            identifier
-            list
+        assignment
           identifier
           identifier
+        assignment
+          identifier
+          identifier
+        assignment
+          identifier
+          identifier
+        assignment
           identifier
           identifier
 >
-module grid(cols, offsets, gaps, height, hole_width, wall_width, fill){    
-    for(hcol = [0:fill?max_grid_hexagons_x-1:(len(cols)-1)]){
-        for(hrow = [0:(fill?(max_grid_hexagons_y-1):(cols[hcol]-1))]) {
-            skip = hcol<len(gaps) && len(search(hrow+1, gaps[hcol])) > 0;          
-            if(!skip){
-                offset_value=hcol>len(offsets)-1?0:offsets[hcol];
-                
-                lo = (hcol+(flip_staggering?1:0))%2;
-                x = (hex_d-hex_t)*hcol;
-                y = -(hex_h)*(hrow + offset_value + lo/2);                
-                
-                if(hcol<max_grid_hexagons_x && hrow<(lo==0?max_grid_hexagons_y:max_grid_hexagons_y_lo)){
-                    left = edge_left && hcol==0;
-                    top = edge_top && hrow==0 && hcol%2==(flip_staggering?1:0);
-                    right = edge_right && hcol==max_grid_hexagons_x-1;
-                    bottom = edge_bottom && hrow+1==(lo==0?max_grid_hexagons_y:max_grid_hexagons_y_lo) && -y+hex_h>total_height+0.001 && -y+hex_h/2<=total_height;
-                    translate([x, y, 0]) halfhex(height, hex_s, wall_width, hole_width, left, top, right, bottom);
-                }
-            }        
-        }
-    }
-}
-<
   module_declaration
+fruitfly_trap
+<
     identifier
+>
+(
+  outer_thread_diameter,
+  lid_inner_height,
+  thread_starts,
+  height,
+)
+<
     parameters_declaration
       identifier
       identifier
       identifier
       identifier
-      identifier
-      identifier
-      identifier
+>
+{
+  difference() {
+    union() {
+      rotate_extrude() 
+        fruitfly_trap_profile(
+          outer_thread_diameter = outer_thread_diameter,
+          lid_inner_height = lid_inner_height,
+          height = height
+        );
+      translate([0, 0, lid_inner_height + WALL_THICKNESS / 2 - THREAD_HALF_BASE_WIDTH - THREAD_HEIGHT])
+      copy_rotate(n = thread_starts)
+        qthread(
+         h = THREAD_HEIGHT,
+         r = outer_thread_diameter / 2 + CLEARANCE,
+         pitch = THREAD_PITCH,
+         segs = 100
+         ) 
+           thread_profile();
+    }
+   
+    perforation_layer_height = PERFORATION_HOLE_HEIGHT + PERFORATION_DISTANCE_V;
+    perforation_start_z = WALL_THICKNESS + PERFORATION_HOLE_HEIGHT;
+    num_perforation_layers = floor((height - perforation_start_z) / perforation_layer_height);
+    inner_radius = outer_thread_diameter / 2 - RIM_WIDTH;
+   
+    union() {
+      for (i = [0 : num_perforation_layers - 1]) {
+        perforation_z = perforation_start_z + i * perforation_layer_height;
+        factor = (inner_radius - ENTRANCE_RADIUS) / height; 
+        r = inner_radius - perforation_z * factor;
+        num_holes = floor(r * 2 * PI / (PERFORATION_HOLE_WIDTH + PERFORATION_DISTANCE_H));
+        if (num_holes >= 4) {
+          perforation_hole_angle = 360 * (1 / num_holes - PERFORATION_DISTANCE_H / (r * 2 * PI));
+          rotate([0, 0, i * 5])
+          copy_rotate(num_holes)
+          translate([0, 0, perforation_z])
+          cube([inner_radius, PERFORATION_HOLE_WIDTH, PERFORATION_HOLE_HEIGHT]);
+        }
+      }    
+    }
+  }
+}
+<
     union_block
-      for_block
-        parenthesized_assignments
+      transform_chain
+        module_call
+          identifier
+          arguments
+        union_block
+          transform_chain
+            module_call
+              identifier
+              arguments
+            union_block
+              transform_chain
+                module_call
+                  identifier
+                  arguments
+                transform_chain
+                  module_call
+                    identifier
+                    arguments
+                      assignment
+                        identifier
+                        identifier
+                      assignment
+                        identifier
+                        identifier
+                      assignment
+                        identifier
+                        identifier
+              transform_chain
+                module_call
+                  identifier
+                  arguments
+                    list
+                      number
+                      number
+                      binary_expression
+                        binary_expression
+                          binary_expression
+                            identifier
+                            binary_expression
+                              identifier
+                              number
+                          identifier
+                        identifier
+                transform_chain
+                  module_call
+                    identifier
+                    arguments
+                      assignment
+                        identifier
+                        identifier
+                  transform_chain
+                    module_call
+                      identifier
+                      arguments
+                        assignment
+                          identifier
+                          identifier
+                        assignment
+                          identifier
+                          binary_expression
+                            binary_expression
+                              identifier
+                              number
+                            identifier
+                        assignment
+                          identifier
+                          identifier
+                        assignment
+                          identifier
+                          number
+                    transform_chain
+                      module_call
+                        identifier
+                        arguments
           assignment
             identifier
-            range
-              number
-              ternary_expression
-                identifier
+            binary_expression
+              identifier
+              identifier
+          assignment
+            identifier
+            binary_expression
+              identifier
+              identifier
+          assignment
+            identifier
+            function_call
+              identifier
+              arguments
                 binary_expression
+                  parenthesized_expression
+                    binary_expression
+                      identifier
+                      identifier
                   identifier
-                  number
-                parenthesized_expression
-                  binary_expression
+          assignment
+            identifier
+            binary_expression
+              binary_expression
+                identifier
+                number
+              identifier
+          transform_chain
+            module_call
+              identifier
+              arguments
+            union_block
+              for_block
+                parenthesized_assignments
+                  assignment
+                    identifier
+                    range
+                      number
+                      binary_expression
+                        identifier
+                        number
+                union_block
+                  assignment
+                    identifier
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        identifier
+                  assignment
+                    identifier
+                    binary_expression
+                      parenthesized_expression
+                        binary_expression
+                          identifier
+                          identifier
+                      identifier
+                  assignment
+                    identifier
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        identifier
+                  assignment
+                    identifier
                     function_call
                       identifier
                       arguments
+                        binary_expression
+                          binary_expression
+                            binary_expression
+                              identifier
+                              number
+                            identifier
+                          parenthesized_expression
+                            binary_expression
+                              identifier
+                              identifier
+                  if_block
+                    parenthesized_expression
+                      binary_expression
                         identifier
-                    number
+                        number
+                    union_block
+                      assignment
+                        identifier
+                        binary_expression
+                          number
+                          parenthesized_expression
+                            binary_expression
+                              binary_expression
+                                number
+                                identifier
+                              binary_expression
+                                identifier
+                                parenthesized_expression
+                                  binary_expression
+                                    binary_expression
+                                      identifier
+                                      number
+                                    identifier
+                      transform_chain
+                        module_call
+                          identifier
+                          arguments
+                            list
+                              number
+                              number
+                              binary_expression
+                                identifier
+                                number
+                        transform_chain
+                          module_call
+                            identifier
+                            arguments
+                              identifier
+                          transform_chain
+                            module_call
+                              identifier
+                              arguments
+                                list
+                                  number
+                                  number
+                                  identifier
+                            transform_chain
+                              module_call
+                                identifier
+                                arguments
+                                  list
+                                    identifier
+                                    identifier
+                                    identifier
+>
+  module_declaration
+qthread
+<
+    identifier
+>
+(h, r, pitch, segs = 12)
+<
+    parameters_declaration
+      identifier
+      identifier
+      identifier
+      assignment
+        identifier
+        number
+>
+{
+  layers = floor(h / pitch);
+  end_angle = (h / pitch - layers) * 360; 
+  std_seg_angle = 360 / segs;
+  seg_vdist = pitch / segs;
+  seg_hdist = r * sin(std_seg_angle);
+  a = asin(seg_vdist / seg_hdist);
+  union() {
+    for (j = [0 : layers]) {
+      segs_for_layer = (j < layers) 
+        ? segs
+        : ceil(end_angle / std_seg_angle);
+      translate([0, 0, pitch * j]) {
+        for (i = [0 : segs_for_layer - 1]) {
+          seg_angle = (j < layers || i < segs_for_layer - 1) 
+            ? std_seg_angle 
+            : end_angle - std_seg_angle * i;
+          translate([0, 0, seg_vdist * i])
+          rotate([a, 0, std_seg_angle * i])
+          rotate_extrude(angle = seg_angle / cos(a) + 0.2) {
+              translate([r, 0])
+              children();
+          }
+        }
+      }
+    }
+    // rounded end caps
+    translate([r, 0.001, 0])
+    rotate([a, 0, 0])
+    rotate([0, 90, 0])
+    thread_end() children();
+    
+    rotate([0, 0, end_angle + 0.2])
+    translate([r, 0, h])
+    rotate([a + 180, 0, 0])
+    rotate([0, 90, 0])
+    thread_end() children();
+  }
+}
+<
+    union_block
+      assignment
+        identifier
+        function_call
+          identifier
+          arguments
+            binary_expression
+              identifier
+              identifier
+      assignment
+        identifier
+        binary_expression
+          parenthesized_expression
+            binary_expression
+              binary_expression
+                identifier
+                identifier
+              identifier
+          number
+      assignment
+        identifier
+        binary_expression
+          number
+          identifier
+      assignment
+        identifier
+        binary_expression
+          identifier
+          identifier
+      assignment
+        identifier
+        binary_expression
+          identifier
+          function_call
+            identifier
+            arguments
+              identifier
+      assignment
+        identifier
+        function_call
+          identifier
+          arguments
+            binary_expression
+              identifier
+              identifier
+      transform_chain
+        module_call
+          identifier
+          arguments
         union_block
           for_block
             parenthesized_assignments
@@ -470,228 +662,273 @@ module grid(cols, offsets, gaps, height, hole_width, wall_width, fill){
                 identifier
                 range
                   number
-                  parenthesized_expression
-                    ternary_expression
-                      identifier
-                      parenthesized_expression
-                        binary_expression
-                          identifier
-                          number
-                      parenthesized_expression
-                        binary_expression
-                          index_expression
-                            identifier
-                            identifier
-                          number
+                  identifier
             union_block
               assignment
                 identifier
-                binary_expression
-                  binary_expression
-                    identifier
-                    function_call
+                ternary_expression
+                  parenthesized_expression
+                    binary_expression
                       identifier
-                      arguments
+                      identifier
+                  identifier
+                  function_call
+                    identifier
+                    arguments
+                      binary_expression
                         identifier
-                  binary_expression
-                    function_call
-                      identifier
-                      arguments
-                        function_call
-                          identifier
-                          arguments
-                            binary_expression
-                              identifier
-                              number
-                            index_expression
-                              identifier
-                              identifier
-                    number
-              if_block
-                parenthesized_expression
-                  unary_expression
-                    identifier
+                        identifier
+              transform_chain
+                module_call
+                  identifier
+                  arguments
+                    list
+                      number
+                      number
+                      binary_expression
+                        identifier
+                        identifier
                 union_block
-                  assignment
-                    identifier
-                    ternary_expression
-                      binary_expression
-                        identifier
-                        binary_expression
-                          function_call
-                            identifier
-                            arguments
-                              identifier
-                          number
-                      number
-                      index_expression
-                        identifier
-                        identifier
-                  assignment
-                    identifier
-                    binary_expression
-                      parenthesized_expression
-                        binary_expression
-                          identifier
-                          parenthesized_expression
-                            ternary_expression
-                              identifier
-                              number
-                              number
-                      number
-                  assignment
-                    identifier
-                    binary_expression
-                      parenthesized_expression
-                        binary_expression
-                          identifier
-                          identifier
-                      identifier
-                  assignment
-                    identifier
-                    unary_expression
-                      binary_expression
-                        parenthesized_expression
-                          identifier
-                        parenthesized_expression
-                          binary_expression
-                            binary_expression
-                              identifier
-                              identifier
-                            binary_expression
-                              identifier
-                              number
-                  if_block
-                    parenthesized_expression
-                      binary_expression
-                        binary_expression
-                          identifier
-                          identifier
-                        binary_expression
-                          identifier
-                          parenthesized_expression
-                            ternary_expression
-                              binary_expression
-                                identifier
-                                number
-                              identifier
-                              identifier
-                    union_block
+                  for_block
+                    parenthesized_assignments
                       assignment
                         identifier
-                        binary_expression
-                          identifier
+                        range
+                          number
                           binary_expression
                             identifier
                             number
+                    union_block
                       assignment
                         identifier
-                        binary_expression
-                          binary_expression
-                            identifier
+                        ternary_expression
+                          parenthesized_expression
                             binary_expression
-                              identifier
-                              number
-                          binary_expression
-                            binary_expression
-                              identifier
-                              number
-                            parenthesized_expression
-                              ternary_expression
+                              binary_expression
                                 identifier
-                                number
-                                number
-                      assignment
-                        identifier
-                        binary_expression
+                                identifier
+                              binary_expression
+                                identifier
+                                binary_expression
+                                  identifier
+                                  number
                           identifier
                           binary_expression
                             identifier
                             binary_expression
                               identifier
-                              number
-                      assignment
-                        identifier
-                        binary_expression
-                          binary_expression
-                            binary_expression
                               identifier
-                              binary_expression
-                                binary_expression
-                                  identifier
-                                  number
-                                parenthesized_expression
-                                  ternary_expression
-                                    binary_expression
-                                      identifier
-                                      number
-                                    identifier
-                                    identifier
-                            binary_expression
-                              binary_expression
-                                unary_expression
-                                  identifier
-                                identifier
-                              binary_expression
-                                identifier
-                                number
-                          binary_expression
-                            binary_expression
-                              unary_expression
-                                identifier
-                              binary_expression
-                                identifier
-                                number
-                            identifier
                       transform_chain
                         module_call
                           identifier
                           arguments
                             list
-                              identifier
-                              identifier
                               number
+                              number
+                              binary_expression
+                                identifier
+                                identifier
                         transform_chain
                           module_call
                             identifier
                             arguments
+                              list
+                                identifier
+                                number
+                                binary_expression
+                                  identifier
+                                  identifier
+                          transform_chain
+                            module_call
                               identifier
-                              identifier
-                              identifier
-                              identifier
-                              identifier
-                              identifier
-                              identifier
-                              identifier
+                              arguments
+                                assignment
+                                  identifier
+                                  binary_expression
+                                    binary_expression
+                                      identifier
+                                      function_call
+                                        identifier
+                                        arguments
+                                          identifier
+                                    number
+                            union_block
+                              transform_chain
+                                module_call
+                                  identifier
+                                  arguments
+                                    list
+                                      identifier
+                                      number
+                                transform_chain
+                                  module_call
+                                    identifier
+                                    arguments
+          comment
+          transform_chain
+            module_call
+              identifier
+              arguments
+                list
+                  identifier
+                  number
+                  number
+            transform_chain
+              module_call
+                identifier
+                arguments
+                  list
+                    identifier
+                    number
+                    number
+              transform_chain
+                module_call
+                  identifier
+                  arguments
+                    list
+                      number
+                      number
+                      number
+                transform_chain
+                  module_call
+                    identifier
+                    arguments
+                  transform_chain
+                    module_call
+                      identifier
+                      arguments
+          transform_chain
+            module_call
+              identifier
+              arguments
+                list
+                  number
+                  number
+                  binary_expression
+                    identifier
+                    number
+            transform_chain
+              module_call
+                identifier
+                arguments
+                  list
+                    identifier
+                    number
+                    identifier
+              transform_chain
+                module_call
+                  identifier
+                  arguments
+                    list
+                      binary_expression
+                        identifier
+                        number
+                      number
+                      number
+                transform_chain
+                  module_call
+                    identifier
+                    arguments
+                      list
+                        number
+                        number
+                        number
+                  transform_chain
+                    module_call
+                      identifier
+                      arguments
+                    transform_chain
+                      module_call
+                        identifier
+                        arguments
 >
-module halfhex(height, radius, wall_thickness, hole_width, left, top, right, bottom){
-    difference(){
-        union(){
-            hex(height, radius, wall_thickness, hole_width);
-            if(left) translate([0, hex_h/2, 0]) wall(depth, wall_thickness, hex_h);
-            if(top) translate([hex_d/2, 0, 0]) rotate([0,0,-90]) wall(depth, wall_thickness, hex_d);
-            if(right) translate([0, -hex_h/2, 0]) rotate([0,0,180]) wall(depth, wall_thickness, hex_h);
-            if(bottom) translate([-hex_d/2, 0, 0]) rotate([0,0,90]) wall(depth, wall_thickness, hex_d);
-        }
-        if(left) translate([-hex_d/2, -hex_h, 0]) cube([hex_d/2, 2*hex_h, depth]);
-        if(top) translate([-hex_d/2, 0, 0]) cube([hex_d, hex_h, depth]);
-        if(right) translate([0, -hex_h, 0]) cube([hex_d/2, 2*hex_h, depth]);
-        if(bottom) translate([-hex_d/2, -hex_h, 0]) cube([hex_d, hex_h, depth]);
-    }
-}
-<
   module_declaration
+fruitfly_trap_profile
+<
     identifier
+>
+(
+  outer_thread_diameter,
+  lid_inner_height,
+  height,
+  entrance_diameter
+)
+<
     parameters_declaration
       identifier
       identifier
       identifier
       identifier
-      identifier
-      identifier
-      identifier
-      identifier
+>
+{
+  outer_thread_radius = outer_thread_diameter / 2 + CLEARANCE;
+  outer_radius = outer_thread_radius + WALL_THICKNESS;
+  inner_rim_radius = outer_thread_radius - RIM_WIDTH;
+  lid_outer_height = lid_inner_height + WALL_THICKNESS;
+  wall_thickness_h = wall_thickness_h(height = height, inner_rim_radius = inner_rim_radius);
+  inner_top_radius = inner_top_radius(height = height, inner_rim_radius = inner_rim_radius);
+  union() {
+    polygon([
+      [inner_top_radius, 0],
+      [outer_radius - CHAMFER, 0],
+      [outer_radius, CHAMFER],
+      [outer_radius, lid_outer_height - WALL_THICKNESS / 2],
+      [outer_radius - WALL_THICKNESS, lid_outer_height - WALL_THICKNESS / 2],
+      [outer_radius - WALL_THICKNESS, WALL_THICKNESS],
+      [inner_rim_radius, WALL_THICKNESS],
+      [ENTRANCE_RADIUS + wall_thickness_h, height],
+      [ENTRANCE_RADIUS, height]
+    ]);
+    translate([outer_radius - WALL_THICKNESS / 2, lid_outer_height - WALL_THICKNESS / 2])
+    circle(d = WALL_THICKNESS);   
+  }  
+}
+<
     union_block
+      assignment
+        identifier
+        binary_expression
+          binary_expression
+            identifier
+            number
+          identifier
+      assignment
+        identifier
+        binary_expression
+          identifier
+          identifier
+      assignment
+        identifier
+        binary_expression
+          identifier
+          identifier
+      assignment
+        identifier
+        binary_expression
+          identifier
+          identifier
+      assignment
+        identifier
+        function_call
+          identifier
+          arguments
+            assignment
+              identifier
+              identifier
+            assignment
+              identifier
+              identifier
+      assignment
+        identifier
+        function_call
+          identifier
+          arguments
+            assignment
+              identifier
+              identifier
+            assignment
+              identifier
+              identifier
       transform_chain
         module_call
           identifier
@@ -701,234 +938,251 @@ module halfhex(height, radius, wall_thickness, hole_width, left, top, right, bot
             module_call
               identifier
               arguments
+                list
+                  list
+                    identifier
+                    number
+                  list
+                    binary_expression
+                      identifier
+                      identifier
+                    number
+                  list
+                    identifier
+                    identifier
+                  list
+                    identifier
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        number
+                  list
+                    binary_expression
+                      identifier
+                      identifier
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        number
+                  list
+                    binary_expression
+                      identifier
+                      identifier
+                    identifier
+                  list
+                    identifier
+                    identifier
+                  list
+                    binary_expression
+                      identifier
+                      identifier
+                    identifier
+                  list
+                    identifier
+                    identifier
+          transform_chain
+            module_call
+              identifier
+              arguments
+                list
+                  binary_expression
+                    identifier
+                    binary_expression
+                      identifier
+                      number
+                  binary_expression
+                    identifier
+                    binary_expression
+                      identifier
+                      number
+            transform_chain
+              module_call
+                identifier
+                arguments
+                  assignment
+                    identifier
+                    identifier
+>
+  module_declaration
+thread_profile
+<
+    identifier
+>
+()
+<
+    parameters_declaration
+>
+{
+  union() {
+    tip_radius_center_x = -THREAD_DEPTH + THREAD_TIP_RADIUS;
+
+    translate([tip_radius_center_x, 0])
+    circle(r = THREAD_TIP_RADIUS);
+    polygon([
+      [ tip_radius_center_x - THREAD_TIP_RADIUS * sin(THREAD_ANGLE), -THREAD_TIP_RADIUS  * cos(THREAD_ANGLE) ],
+      [ 0, -THREAD_HALF_BASE_WIDTH ],
+      [ 0.1, -THREAD_HALF_BASE_WIDTH ],
+      [ 0.1, THREAD_HALF_BASE_WIDTH ],
+      [ 0, THREAD_HALF_BASE_WIDTH ],
+      [ tip_radius_center_x - THREAD_TIP_RADIUS * sin(THREAD_ANGLE), THREAD_TIP_RADIUS * cos(THREAD_ANGLE) ]
+    ]);
+  }
+}
+<
+    union_block
+      transform_chain
+        module_call
+          identifier
+          arguments
+        union_block
+          assignment
+            identifier
+            binary_expression
+              unary_expression
+                identifier
+              identifier
+          transform_chain
+            module_call
+              identifier
+              arguments
+                list
+                  identifier
+                  number
+            transform_chain
+              module_call
+                identifier
+                arguments
+                  assignment
+                    identifier
+                    identifier
+          transform_chain
+            module_call
+              identifier
+              arguments
+                list
+                  list
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        function_call
+                          identifier
+                          arguments
+                            identifier
+                    unary_expression
+                      binary_expression
+                        identifier
+                        function_call
+                          identifier
+                          arguments
+                            identifier
+                  list
+                    number
+                    unary_expression
+                      identifier
+                  list
+                    number
+                    unary_expression
+                      identifier
+                  list
+                    number
+                    identifier
+                  list
+                    number
+                    identifier
+                  list
+                    binary_expression
+                      identifier
+                      binary_expression
+                        identifier
+                        function_call
+                          identifier
+                          arguments
+                            identifier
+                    binary_expression
+                      identifier
+                      function_call
+                        identifier
+                        arguments
+                          identifier
+>
+  module_declaration
+thread_end
+<
+    identifier
+>
+()
+<
+    parameters_declaration
+>
+{
+    rotate_extrude(angle = 180)
+    rotate([0, 0, 90])
+    intersection() {
+      translate([-500, 0])
+      square(1000);
+      children();
+    }
+}
+<
+    union_block
+      transform_chain
+        module_call
+          identifier
+          arguments
+            assignment
+              identifier
+              number
+        transform_chain
+          module_call
+            identifier
+            arguments
+              list
+                number
+                number
+                number
+          transform_chain
+            module_call
+              identifier
+              arguments
             union_block
               transform_chain
                 module_call
                   identifier
                   arguments
-                    identifier
-                    identifier
-                    identifier
-                    identifier
-              if_block
-                parenthesized_expression
-                  identifier
+                    list
+                      unary_expression
+                        number
+                      number
                 transform_chain
                   module_call
                     identifier
                     arguments
-                      list
-                        number
-                        binary_expression
-                          identifier
-                          number
-                        number
-                  transform_chain
-                    module_call
-                      identifier
-                      arguments
-                        identifier
-                        identifier
-                        identifier
-              if_block
-                parenthesized_expression
-                  identifier
-                transform_chain
-                  module_call
-                    identifier
-                    arguments
-                      list
-                        binary_expression
-                          identifier
-                          number
-                        number
-                        number
-                  transform_chain
-                    module_call
-                      identifier
-                      arguments
-                        list
-                          number
-                          number
-                          unary_expression
-                            number
-                    transform_chain
-                      module_call
-                        identifier
-                        arguments
-                          identifier
-                          identifier
-                          identifier
-              if_block
-                parenthesized_expression
-                  identifier
-                transform_chain
-                  module_call
-                    identifier
-                    arguments
-                      list
-                        number
-                        unary_expression
-                          binary_expression
-                            identifier
-                            number
-                        number
-                  transform_chain
-                    module_call
-                      identifier
-                      arguments
-                        list
-                          number
-                          number
-                          number
-                    transform_chain
-                      module_call
-                        identifier
-                        arguments
-                          identifier
-                          identifier
-                          identifier
-              if_block
-                parenthesized_expression
-                  identifier
-                transform_chain
-                  module_call
-                    identifier
-                    arguments
-                      list
-                        unary_expression
-                          binary_expression
-                            identifier
-                            number
-                        number
-                        number
-                  transform_chain
-                    module_call
-                      identifier
-                      arguments
-                        list
-                          number
-                          number
-                          number
-                    transform_chain
-                      module_call
-                        identifier
-                        arguments
-                          identifier
-                          identifier
-                          identifier
-          if_block
-            parenthesized_expression
-              identifier
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    unary_expression
-                      binary_expression
-                        identifier
-                        number
-                    unary_expression
-                      identifier
-                    number
+                      number
               transform_chain
                 module_call
                   identifier
                   arguments
-                    list
-                      binary_expression
-                        identifier
-                        number
-                      binary_expression
-                        number
-                        identifier
-                      identifier
-          if_block
-            parenthesized_expression
-              identifier
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    unary_expression
-                      binary_expression
-                        identifier
-                        number
-                    number
-                    number
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    list
-                      identifier
-                      identifier
-                      identifier
-          if_block
-            parenthesized_expression
-              identifier
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    number
-                    unary_expression
-                      identifier
-                    number
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    list
-                      binary_expression
-                        identifier
-                        number
-                      binary_expression
-                        number
-                        identifier
-                      identifier
-          if_block
-            parenthesized_expression
-              identifier
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    unary_expression
-                      binary_expression
-                        identifier
-                        number
-                    unary_expression
-                      identifier
-                    number
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    list
-                      identifier
-                      identifier
-                      identifier
 >
-module hex(height, radius, wall_thickness, hole_width){
-    for(i=[0:5]){
-        rotate([0,0,i*60+30])
-        translate([-hole_width/2-wall_thickness, radius/2, 0])
-        wall(height, wall_thickness, radius);
-    }
-}
-<
   module_declaration
+copy_rotate
+<
     identifier
+>
+(n)
+<
     parameters_declaration
       identifier
-      identifier
-      identifier
-      identifier
+>
+{
+  for (i = [0 : n - 1]) {
+    rotate([0, 0, 360 / n * i])
+    children();
+  }
+}
+<
     union_block
       for_block
         parenthesized_assignments
@@ -936,7 +1190,9 @@ module hex(height, radius, wall_thickness, hole_width){
             identifier
             range
               number
-              number
+              binary_expression
+                identifier
+                number
         union_block
           transform_chain
             module_call
@@ -947,194 +1203,154 @@ module hex(height, radius, wall_thickness, hole_width){
                   number
                   binary_expression
                     binary_expression
-                      identifier
                       number
-                    number
+                      identifier
+                    identifier
             transform_chain
               module_call
                 identifier
                 arguments
-                  list
-                    binary_expression
-                      unary_expression
-                        binary_expression
-                          identifier
-                          number
-                      identifier
-                    binary_expression
-                      identifier
-                      number
-                    number
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    identifier
-                    identifier
-                    identifier
 >
-module wall(height, wall_thickness, length){
-    hmax=height;
-    hmin=5.1;
-    hd=2;
-    tmax=wall_thickness;
-    tmin=wall_thickness-1;   
-    //ft = 0.18;//fillet thickness
-    ft = 0.4;//fillet thickness. (edwin: should be 0.4 to make it the same as the original)
-    fh = 0.5;//fillet height
-    
-    difference(){
-        rotate([90,0,0])
-            linear_extrude(length)   
-            polygon([[0,0], [0,hmax], [tmin,hmax], [tmin,hmax-hd], [tmax,hmin], [tmax,fh], [tmax-ft,0]]);
-        //Fillet
-        rotate([0,0,-30])
-            cube([4*tmax, 2*tmax, hmax]);
-        mirror([0,1,0])
-            translate([0,length,0])
-            rotate([0,0,-30])
-            cube([4*tmax, 2*tmax, hmax]);
-    }
-}
+function wall_thickness_h(height, inner_rim_radius) =
+  let(inner_height = (height - WALL_THICKNESS))
+  let(h = inner_rim_radius - ENTRANCE_RADIUS)
+  let(k = WALL_THICKNESS ^ 2 / inner_height ^ 2)
+  let(a = k - 1)
+  let(b = -2 * k * h)
+  let(c = WALL_THICKNESS ^ 2 + k * h ^ 2)
+  echo("k", k, "a", a, "b", b, "c", c)
+  (-b - sqrt(b ^ 2 - 4 * a * c)) / (2 * a)
 <
-  module_declaration
+  function_declaration
     identifier
     parameters_declaration
       identifier
       identifier
+    let_expression
+      parenthesized_assignments
+        assignment
+          identifier
+          parenthesized_expression
+            binary_expression
+              identifier
+              identifier
+      let_expression
+        parenthesized_assignments
+          assignment
+            identifier
+            binary_expression
+              identifier
+              identifier
+        let_expression
+          parenthesized_assignments
+            assignment
+              identifier
+              binary_expression
+                binary_expression
+                  identifier
+                  number
+                binary_expression
+                  identifier
+                  number
+          let_expression
+            parenthesized_assignments
+              assignment
+                identifier
+                binary_expression
+                  identifier
+                  number
+            let_expression
+              parenthesized_assignments
+                assignment
+                  identifier
+                  unary_expression
+                    binary_expression
+                      binary_expression
+                        number
+                        identifier
+                      identifier
+              let_expression
+                parenthesized_assignments
+                  assignment
+                    identifier
+                    binary_expression
+                      binary_expression
+                        identifier
+                        number
+                      binary_expression
+                        identifier
+                        binary_expression
+                          identifier
+                          number
+                binary_expression
+                  function_call
+                    function_call
+                      identifier
+                      arguments
+                        string
+                        identifier
+                        string
+                        identifier
+                        string
+                        identifier
+                        string
+                        identifier
+                    arguments
+                      binary_expression
+                        unary_expression
+                          identifier
+                        function_call
+                          identifier
+                          arguments
+                            binary_expression
+                              binary_expression
+                                identifier
+                                number
+                              binary_expression
+                                binary_expression
+                                  number
+                                  identifier
+                                identifier
+                  parenthesized_expression
+                    binary_expression
+                      number
+                      identifier
+>
+function inner_top_radius(height, inner_rim_radius) =
+  let(wall_thickness_h = wall_thickness_h(height = height, inner_rim_radius = inner_rim_radius))
+  inner_rim_radius - (inner_rim_radius - wall_thickness_h - ENTRANCE_RADIUS) / (height - WALL_THICKNESS) * WALL_THICKNESS
+<
+  function_declaration
+    identifier
+    parameters_declaration
       identifier
-    union_block
-      assignment
-        identifier
-        identifier
-      assignment
-        identifier
-        number
-      assignment
-        identifier
-        number
-      assignment
-        identifier
-        identifier
-      assignment
+      identifier
+    let_expression
+      parenthesized_assignments
+        assignment
+          identifier
+          function_call
+            identifier
+            arguments
+              assignment
+                identifier
+                identifier
+              assignment
+                identifier
+                identifier
+      binary_expression
         identifier
         binary_expression
+          binary_expression
+            parenthesized_expression
+              binary_expression
+                binary_expression
+                  identifier
+                  identifier
+                identifier
+            parenthesized_expression
+              binary_expression
+                identifier
+                identifier
           identifier
-          number
-      comment
-      assignment
-        identifier
-        number
-      comment
-      assignment
-        identifier
-        number
-      comment
-      transform_chain
-        module_call
-          identifier
-          arguments
-        union_block
-          transform_chain
-            module_call
-              identifier
-              arguments
-                list
-                  number
-                  number
-                  number
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  identifier
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    list
-                      list
-                        number
-                        number
-                      list
-                        number
-                        identifier
-                      list
-                        identifier
-                        identifier
-                      list
-                        identifier
-                        binary_expression
-                          identifier
-                          identifier
-                      list
-                        identifier
-                        identifier
-                      list
-                        identifier
-                        identifier
-                      list
-                        binary_expression
-                          identifier
-                          identifier
-                        number
-          comment
-          transform_chain
-            module_call
-              identifier
-              arguments
-                list
-                  number
-                  number
-                  unary_expression
-                    number
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    binary_expression
-                      number
-                      identifier
-                    binary_expression
-                      number
-                      identifier
-                    identifier
-          transform_chain
-            module_call
-              identifier
-              arguments
-                list
-                  number
-                  number
-                  number
-            transform_chain
-              module_call
-                identifier
-                arguments
-                  list
-                    number
-                    identifier
-                    number
-              transform_chain
-                module_call
-                  identifier
-                  arguments
-                    list
-                      number
-                      number
-                      unary_expression
-                        number
-                transform_chain
-                  module_call
-                    identifier
-                    arguments
-                      list
-                        binary_expression
-                          number
-                          identifier
-                        binary_expression
-                          number
-                          identifier
-                        identifier
 >

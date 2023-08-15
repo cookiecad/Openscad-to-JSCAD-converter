@@ -2,12 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import Parser from 'tree-sitter';
 import OpenSCAD from 'tree-sitter-openscad';
-import grammar from './node_modules/tree-sitter-openscad/src/grammar.json' assert { type: "json" };
 // import { CSG } from '@jscad/csg';
 import prettier from 'prettier';
 import chalk from 'chalk';
+import dedent from 'dedent';
 
-import {generateCode} from './jscadSyntax.js';
+import {generateTreeCode} from './jscadSyntax.js';
 
 
 
@@ -39,8 +39,10 @@ const printNode = (node, depth) => {
     result += printNode(node.namedChild(i), depth + 1);
   }
 
-  if (node.parent?.type == 'source_file') {
-    result = `${node.text}\n<\n${result}>\n`;
+  // if (node.parent?.type == 'source_file') {
+  if ((node.parent?.type == 'source_file') && (node.type != 'module_declaration') 
+  || (node.parent?.type == 'module_declaration')) {
+      result = `${node.text}\n<\n${result}>\n`;
   }
   return result;
 }
@@ -50,28 +52,34 @@ fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0));
 
 
 // Traverse the syntax tree and generate JSCAD code
-const jscadCode = generateJSCAD(tree.rootNode);
+var jscadCode = generateTreeCode(tree.rootNode);
 // const formattedCode = prettier.format(jscadCode, { parser: 'babel' });
 
 // Output the JSCAD code
 console.log('JSCAD code ---------------:');
 console.log(jscadCode);
 
+// jscadCode = `const { primitives, booleans, transforms } = jscad;
+// const { cube, sphere, cylinder } = primitives;
+// const { union, difference, intersection } = booleans;
+// const { translate, rotate, scale } = transforms;\n
+// ${jscadCode}
+// `
+
 fs.writeFileSync('./output.jscad', jscadCode);
+fs.writeFileSync('./output.js', dedent`
+import jscad from '@jscad/modeling'
+export function main() {
+  ${jscadCode}
+}
+`);
 
 var STOP_PROCESSIMG = false;
 
-function generateJSCAD(node) {
-  if (STOP_PROCESSIMG) { return; }
-
-  process.stdout.write(`${node.type} `);
-  let result = '';
-  for (let i = 0; i < node.namedChildCount; i++) {
-    result += generateJSCAD(node.namedChild(i));
-  }
-  switch (node.type) {
-    case 'source_file':
-      return result;
+// function generateJSCAD(node) {
+  // switch (node.type) {
+  //   case 'source_file':
+  //     return result;
     // case 'module_declaration':
     //   return generateJSCAD(node.child(1));
     // case 'module_parameter_declaration':
@@ -142,31 +150,31 @@ function generateJSCAD(node) {
     // case 'ternary_expression':
       // return generateTernaryExpression(node);
       // return generateCode(node);
-    default:
+    // default:
 
-    try {
-      // if (['identifier', 'number', 'boolean', 'function_call', 'arguments', 'ternary_expression',
-      //       'parenthesized_expression', 'index_expression', 'module_declaration', 'parameter_declaration', 'module_call'].includes(node.type)) {
-        return generateCode(node);
+    // try {
+    //   // if (['identifier', 'number', 'boolean', 'function_call', 'arguments', 'ternary_expression',
+    //   //       'parenthesized_expression', 'index_expression', 'module_declaration', 'parameter_declaration', 'module_call'].includes(node.type)) {
+    //     return generateCode(node);
       // }
-    } catch (error) {
-      if (error.node) {
-        node = error.node;
-      }
-      console.trace(error);
-      process.stdout.write('\n');
-      out('red', `node type: `)
-      console.log(`${node.type}, text: ${node.text}`);
-      const rule = grammar.rules[node.type];
-      if (rule) {
-        out('red', `Grammar rule: `)
-        console.log(`${JSON.stringify(rule)}`);
-      }
-      STOP_PROCESSIMG = true;
-      return '';
-    }
-  }
-}
+    // } catch (error) {
+    //   if (error.node) {
+    //     node = error.node;
+    //   }
+    //   console.trace(error);
+    //   process.stdout.write('\n');
+    //   out('red', `node type: `)
+    //   console.log(`${node.type}, text: ${node.text}`);
+    //   const rule = grammar.rules[node.type];
+    //   if (rule) {
+    //     out('red', `Grammar rule: `)
+    //     console.log(`${JSON.stringify(rule)}`);
+    //   }
+    //   STOP_PROCESSIMG = true;
+    //   return '';
+    // }
+//   }
+// }
 
 
 
