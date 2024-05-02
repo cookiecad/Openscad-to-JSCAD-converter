@@ -9,8 +9,6 @@ import dedent from 'dedent';
 
 import {generateTreeCode} from './jscadSyntax.js';
 
-
-
 const log = (color, msg) => console.log(chalk[color](msg));
 const out = (color, msg) => process.stdout.write(chalk[color](msg));
 
@@ -22,16 +20,19 @@ parser.setLanguage(OpenSCAD);
 // Take the filename from the command line arguments
 const filename = process.argv[2];
 if (!filename) {
-    console.error('No filename provided. Usage: node index.js <filename.scad>');
+    console.error('No filename provided. Usage: node index.js <filename.scad> <output folder>?');
     process.exit(1);
 }
+
+const outputFolder = process.argv[3] || './output';
+
 const code = fs.readFileSync(filename, 'utf8');
 
 // Parse the OpenSCAD code
 const tree = parser.parse(code);
 
 // output the tree of node types to a file with each node on a separate line indented by its depth
-const openscadTreeFilename = './openscadTree.txt'
+const openscadTreeFilename = path.join(outputFolder,'openscadTree.txt')
 const printNode = (node, depth) => {
   const indent = '  '.repeat(depth);
   let result = `${indent}${node.type}\n`;
@@ -66,12 +67,23 @@ console.log(jscadCode);
 // ${jscadCode}
 // `
 
-fs.writeFileSync('./output.jscad', jscadCode);
-fs.writeFileSync('./output.js', dedent`
+const outputJscadFilename = path.join(outputFolder, 'output.jscad');
+const outputJsFilename = path.join(outputFolder, 'output.js');
+const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js');
+fs.writeFileSync(outputJscadFilename, jscadCode);
+fs.writeFileSync(outputJsFilename, dedent`
 import jscad from '@jscad/modeling'
 export function main() {
   ${jscadCode}
 }
+`);
+
+fs.writeFileSync(outputCaditJsFilename, dedent`
+function main() {
+  ${jscadCode}
+}
+let result =  jscad.booleans.union(main());
+console.log(result)
 `);
 
 var STOP_PROCESSIMG = false;

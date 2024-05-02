@@ -1,5 +1,5 @@
 import generatedJscad from './jscadSyntaxFromGrammar.json' assert { type: "json" };
-import grammar from './node_modules/tree-sitter-openscad/src/grammar.json' assert { type: "json" };
+import grammar from 'tree-sitter-openscad/src/grammar.json' assert { type: "json" };
 import chalk from 'chalk';
 import dedent from 'dedent';
 const log = (color, msg) => console.log(chalk[color](msg));
@@ -255,7 +255,7 @@ const jscadSyntax = {
         linear_extrude: (args) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
         ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }          
           )`,
-        polygon: (args) => `ensureCounterclockwise({points: ${args}})`,
+        polygon: (args) => `polygonEnsureCounterclockwise({points: ${args}})`,
         mirror: (args) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
         ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }          
           )`,

@@ -1,0 +1,6 @@
+{
+  "name": "openscad-to-jscad-converter",
+  "workspaces": [
+    "converter"
+  ]
+}
