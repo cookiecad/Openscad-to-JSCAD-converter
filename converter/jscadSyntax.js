@@ -1,33 +1,47 @@
-import generatedJscad from './jscadSyntaxFromGrammar.json' assert { type: "json" };
-import grammar from 'tree-sitter-openscad/src/grammar.json' assert { type: "json" };
-import chalk from 'chalk';
-import dedent from 'dedent';
-const log = (color, msg) => console.log(chalk[color](msg));
-const out = (color, msg) => process.stdout.write(chalk[color](msg));
+import generatedJscad from "./jscadSyntaxFromGrammar.json" assert { type: "json" }
+import grammar from "tree-sitter-openscad/src/grammar.json" assert { type: "json" }
+import chalk from 'chalk'
+import dedent from 'dedent'
+const log = (color, msg) => console.log(chalk[color](msg))
+const out = (color, msg) => process.stdout.write(chalk[color](msg))
 
-let scopes = [new Set()]; // Initialize the global scope
+const scopes = [new Set()] // Initialize the global scope
 
 // Whenever a new block scope starts (module or function)
-function startNewScope() { scopes.push(new Set()); }
+function startNewScope () {
+  scopes.push(new Set())
+}
 
 // Whenever a block scope ends
-function endCurrentScope() { scopes.pop(); }
+function endCurrentScope () {
+  scopes.pop()
+}
 
-let transformChainCounter = [0];
-const inTransformChain = () => transformChainCounter[transformChainCounter.length - 1] > 0;
-function pushTransformChain() { transformChainCounter.push(0); }
-function popTransformChain() { transformChainCounter.pop(); }
-function startTransformChain() { transformChainCounter[transformChainCounter.length - 1]++;}
-function endTransformChain() { transformChainCounter[transformChainCounter.length - 1]--;}
+const transformChainCounter = [0]
+const inTransformChain = () =>
+  transformChainCounter[transformChainCounter.length - 1] > 0
+function pushTransformChain () {
+  transformChainCounter.push(0)
+}
+function popTransformChain () {
+  transformChainCounter.pop()
+}
+function startTransformChain () {
+  transformChainCounter[transformChainCounter.length - 1]++
+}
+function endTransformChain () {
+  transformChainCounter[transformChainCounter.length - 1]--
+}
 
-const helperFunctions = [dedent`
+const helperFunctions = [
+  dedent`
   function inlineIf(condition, ifTrue, ifFalse) {
     let jscadObjects = [];
     if (condition) return ifTrue(jscadObjects)
     else return ifFalse(jscadObjects)
   }`,
 
-dedent`
+  dedent`
   function inlineFor(init, test, increment, body) {
     let jscadObjects = []
     for (let i = init; test(i); i = increment(i)) {
@@ -36,15 +50,14 @@ dedent`
     return jscadObjects
   }
 `,
-//Rotate degrees, convert all args[0] to radians and pass to rotate along with the rest of the args
-dedent`
+  // Rotate degrees, convert all args[0] to radians and pass to rotate along with the rest of the args
+  dedent`
   function rotateDegrees(...args) {
     return rotate(args[0].map(i => i * Math.PI / 180), ...args.slice(1));
   }`,
 
-
-//We may need to make sure to only run this for extrudeLinear
-dedent`
+  // We may need to make sure to only run this for extrudeLinear
+  dedent`
   //Openscad accepts clockwise polygons for extrude. Ensure polygon points are counter clockwise
   function polygonEnsureCounterclockwise(...args) {
     let points = args[0].points;
@@ -58,8 +71,8 @@ dedent`
       points.reverse();
     }
     return polygon(...args);
-  }`,
-];
+  }`
+]
 
 const jscadSyntax = {
   ...generatedJscad,
@@ -78,23 +91,23 @@ const jscadSyntax = {
     separator: ''
   },
   assignment: {
-    generator: (node) => { 
-      const leftNode = generateCode(node.namedChild(0)); // variable name
-      const rightNode = generateCode(node.namedChild(1));
-      let code;
-      
+    generator: (node) => {
+      const leftNode = generateCode(node.namedChild(0)) // variable name
+      const rightNode = generateCode(node.namedChild(1))
+      let code
+
       // Check if variable is already assigned in current scope
-      if(!scopes[scopes.length - 1].has(leftNode)) {
-        code = `let ${leftNode} = ${rightNode}\n`;
-        scopes[scopes.length - 1].add(leftNode);
-      } else { 
-        code = `${leftNode} = ${rightNode}\n`;
+      if (!scopes[scopes.length - 1].has(leftNode)) {
+        code = `let ${leftNode} = ${rightNode}\n`
+        scopes[scopes.length - 1].add(leftNode)
+      } else {
+        code = `${leftNode} = ${rightNode}\n`
       }
-      return code;
+      return code
     }
   },
   comment: {
-    open: '', //comment already includes the "//"
+    open: '', // comment already includes the "//"
     close: '\n',
     children: [],
     text: 'text'
@@ -147,7 +160,7 @@ const jscadSyntax = {
   },
   operator: {
     text: 'text'
-  } ,
+  },
   function_call: {
     generator: generateFunctionCall
   },
@@ -168,7 +181,7 @@ const jscadSyntax = {
       { childIndex: 4, name: 'alternative', optional: false }
     ],
     separator: ' '
-  }, 
+  },
   conditional_expression: {
     open: '',
     close: '',
@@ -177,7 +190,7 @@ const jscadSyntax = {
       { childIndex: 1, name: '?', optional: false, isText: true },
       { childIndex: 2, name: 'consequent', optional: false },
       { childIndex: 3, name: ':', optional: false, isText: true },
-      { childIndex: 4, name: 'alternate', optional: false },
+      { childIndex: 4, name: 'alternate', optional: false }
     ],
     separator: ' '
   },
@@ -192,13 +205,11 @@ const jscadSyntax = {
     close: '}',
     children: 'all',
     separator: ', '
-  },  
+  },
   parenthesized_expression: {
     open: '(',
     close: ')',
-    children: [
-      { childIndex: 1, name: 'expression', optional: false }
-    ],
+    children: [{ childIndex: 1, name: 'expression', optional: false }],
     separator: ''
   },
   parenthesized_assignments: {
@@ -219,19 +230,19 @@ const jscadSyntax = {
     separator: ''
   },
   module_declaration: {
-    generator: node => {
-      startNewScope();
-      const name = node.child(1).text;
-      const parameters = node.child(2).text;
-      const body = generateCode(node.child(3));
-      let result = `\n\nfunction ${name}${parameters} {\n
+    generator: (node) => {
+      startNewScope()
+      const name = node.child(1).text
+      const parameters = node.child(2).text
+      const body = generateCode(node.child(3))
+      const result = `\n\nfunction ${name}${parameters} {\n
         const jscadObjects = [];\n
         ${tabbed(body)}\n
         return jscadObjects;\n
-      }\n`;
+      }\n`
 
-      endCurrentScope();
-      return result;
+      endCurrentScope()
+      return result
     }
     // open: 'function ',
     // close: '\n',
@@ -247,127 +258,139 @@ const jscadSyntax = {
     close: '',
     children: 'all',
     separator: ', '
-  },  
+  },
   module_call: {
-    generator: node => {
+    generator: (node) => {
       const mapping = {
         difference: (args) => `subtract(${args})`,
-        linear_extrude: (args) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
-        ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }          
+        linear_extrude: (
+          args
+        ) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
+        ${node
+          .child(1)
+          .namedChildren.slice(1)
+          .map((i) => generateCode(i))
+          .join(', ')}          
           )`,
         polygon: (args) => `polygonEnsureCounterclockwise({points: ${args}})`,
-        mirror: (args) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
-        ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }          
+        mirror: (
+          args
+        ) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
+        ${node
+          .child(1)
+          .namedChildren.slice(1)
+          .map((i) => generateCode(i))
+          .join(', ')}          
           )`,
-        cube: (args) => `cuboid({size: ${args}, center: [(${generateCode(node.child(1).namedChild(0).namedChild(0))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(1))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(2))})/2]})`,
-        rotate: (args) => dedent`rotateDegrees(${args})`,
+        cube: (args) =>
+          `cuboid({size: ${args}, center: [(${generateCode(node.child(1).namedChild(0).namedChild(0))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(1))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(2))})/2]})`,
+        rotate: (args) => dedent`rotateDegrees(${args})`
       }
 
-      let name = node.child(0).text;
-      let args, result;
+      const name = node.child(0).text
+      let args, result
       // if (name === 'linear_extrude') {
       //   //For linear extrude, the first argument is the height, the rest are the objects
       //   //TODO add support for named parameters
       //   args = dedent`{height: ${generateCode(node.child(1).namedChild(0))}}, ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }`
       // }
       // else {
-        args = generateCode(node.child(1));
+      args = generateCode(node.child(1))
       // }
 
-      if (mapping[name]) { 
+      if (mapping[name]) {
         result = '\n' + mapping[name](args)
-      }
-      else {
+      } else {
         if (moduleNames.includes(name)) {
-          result = `\n...${name}(${args})`;
-        }
-        else {
-          result = `\n${name}(${args})`;
+          result = `\n...${name}(${args})`
+        } else {
+          result = `\n${name}(${args})`
         }
       }
-      //The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
-      if (node.parent?.parent?.type == 'union_block') { result = result + ','}
-      return result;
+      // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
+      if (node.parent?.parent?.type == 'union_block') {
+        result = result + ','
+      }
+      return result
     }
   },
-  union_block: { //I don't think we need the brackets as we are already adding it to module_declaration
-    open: "",
-    close: "",
-    children: "all",
-    separator: ""
+  union_block: {
+    // I don't think we need the brackets as we are already adding it to module_declaration
+    open: '',
+    close: '',
+    children: 'all',
+    separator: ''
   },
   for_block: {
-    generator: node => {
-      const assignments = node.child(1);
-      const body = generateCode(node.child(2));
-      //assignments is of type parenthesized_assignments
-      const assignment = assignments.namedChildren[0];
-      const varName = assignment['leftNode'].text;
-      const range = assignment['rightNode'];
-      const rangeText = generateCode(range);
-      return `for (let ${varName} of ${rangeText}) {\n${tabbed(body)}\n}\n`;
+    generator: (node) => {
+      const assignments = node.child(1)
+      const body = generateCode(node.child(2))
+      // assignments is of type parenthesized_assignments
+      const assignment = assignments.namedChildren[0]
+      const varName = assignment.leftNode.text
+      const range = assignment.rightNode
+      const rangeText = generateCode(range)
+      return `for (let ${varName} of ${rangeText}) {\n${tabbed(body)}\n}\n`
     }
   },
 
   // [0:fill?max_grid_hexagons_x-1:(len(cols)-1)]
   range: {
-    generator: node => {
-      const start = generateCode(node['startNode']);
-      const end = generateCode(node['endNode']);
-      let increment = '';
-      if(node['increment']) {
-        increment = generateCode(node['incrementNode']);
+    generator: (node) => {
+      const start = generateCode(node.startNode)
+      const end = generateCode(node.endNode)
+      let increment = ''
+      if (node.increment) {
+        increment = generateCode(node.incrementNode)
       }
-      //return a string using array.from. The length is the end - start + 1 / increment if it exists
+      // return a string using array.from. The length is the end - start + 1 / increment if it exists
       const lengthStr = `${end} - ${start} + 1 ${increment ? '/ ' + increment : ''}`
-      return `Array.from({length: ${lengthStr}}, (_, i) => ${start} + i ${increment ? '*' + increment : ''})`;
-    },
+      return `Array.from({length: ${lengthStr}}, (_, i) => ${start} + i ${increment ? '*' + increment : ''})`
+    }
   },
   transform_chain: {
-    generator: node => {
-      let result;
-      startTransformChain();
-      const child0 = node.namedChild(0);
+    generator: (node) => {
+      let result
+      startTransformChain()
+      const child0 = node.namedChild(0)
       if (node.namedChildren.length === 1) {
-        result = generateCode(child0);
-      }
-      else {
-        const child0Copy = customNodeCopy(node.namedChild(0));
-        const child1 = customNodeCopy(node.namedChild(1));
+        result = generateCode(child0)
+      } else {
+        const child0Copy = customNodeCopy(node.namedChild(0))
+        const child1 = customNodeCopy(node.namedChild(1))
 
-        const moduleArgs = child0Copy.namedChild(1);
-        moduleArgs.namedChildren.push(child1);
-        moduleArgs.children.push(child1);
+        const moduleArgs = child0Copy.namedChild(1)
+        moduleArgs.namedChildren.push(child1)
+        moduleArgs.children.push(child1)
         result = `${tabbed(generateCode(child0Copy))}`
       }
-      endTransformChain();
+      endTransformChain()
 
       if (!inTransformChain()) {
-        result = `jscadObjects.push(${result}\n)`;
+        result = `jscadObjects.push(${result}\n)`
       }
-      
-      return result;
+
+      return result
     }
-  },  
+  },
   if_block: {
     generator: (node) => {
-      let useInlineIf = false;
-      //If we are in middle of a transform chain, we need to use inlineIf and create a new transformchain
+      let useInlineIf = false
+      // If we are in middle of a transform chain, we need to use inlineIf and create a new transformchain
       if (inTransformChain()) {
-        pushTransformChain();
-        useInlineIf = true;
+        pushTransformChain()
+        useInlineIf = true
       }
-      const condition = generateCode(node['conditionNode']);
-      const consequence = generateCode(node['consequenceNode']);
+      const condition = generateCode(node.conditionNode)
+      const consequence = generateCode(node.consequenceNode)
       if (useInlineIf) {
-        popTransformChain();
-        return `\n...inlineIf(${condition}, (jscadObjects) => ${consequence}, (jscadObjects) => {return []}),`;
-      }
-      else {
-        return `if (${condition}) {\n${tabbed(consequence)}\n}\n`;
+        popTransformChain()
+        return `\n...inlineIf(${condition}, (jscadObjects) => ${consequence}, (jscadObjects) => {return []}),`
+      } else {
+        return `if (${condition}) {\n${tabbed(consequence)}\n}\n`
       }
     }
-  },   
+  },
   special_variable: {
     generator: (node) => {
       // const name = node.child(0).text;
@@ -383,156 +406,153 @@ const jscadSyntax = {
       //   '$vpc': '[0, 0, 0]',
       //   '$children': 'jscadObjects',
       // }
-      return '';
-    } 
-  },
+      return ''
+    }
+  }
+}
 
-  
-};
+function customNodeCopy (node, map = new Map()) {
+  if (map.has(node)) return map.get(node) // if node copy already exists, return it
 
-function customNodeCopy(node, map = new Map()) {
-  if (map.has(node)) return map.get(node); // if node copy already exists, return it
-
-  let copyNode = {
+  const copyNode = {
     type: node.type,
     parent: node.parent,
     text: node.text,
     namedChildren: [],
     children: [],
-    namedChild: function(index) {
-      return this.namedChildren[index];
+    namedChild: function (index) {
+      return this.namedChildren[index]
     },
-    child: function(index) {
-      return this.children[index];
+    child: function (index) {
+      return this.children[index]
     }
-  };
-  map.set(node, copyNode); // add node and its copy to the identity map
+  }
+  map.set(node, copyNode) // add node and its copy to the identity map
 
-  copyNode.namedChildren = node.namedChildren.map(i => customNodeCopy(i, map));
-  copyNode.children = node.children.map(i => customNodeCopy(i, map));
+  copyNode.namedChildren = node.namedChildren.map((i) =>
+    customNodeCopy(i, map)
+  )
+  copyNode.children = node.children.map((i) => customNodeCopy(i, map))
   // Add namedChildren properties to copyNode
   // Loop through the node keys for keys that end in 'Node' and add them to the copyNode
-  getAllProperties(node).forEach(key => {
-    if(key.endsWith('Node')) {
-      copyNode[key] = customNodeCopy(node[key], map);
+  getAllProperties(node).forEach((key) => {
+    if (key.endsWith('Node')) {
+      copyNode[key] = customNodeCopy(node[key], map)
     }
-  });
-  return copyNode;
+  })
+  return copyNode
 }
 
-function tabbed(str) {
-  return str.replace(/^/gm, '  '); 
+function tabbed (str) {
+  return str.replace(/^/gm, '  ')
 }
 
 // Find all methods of an object, up to the root prototype
-function getAllProperties(obj, allProps = []) {
+function getAllProperties (obj, allProps = []) {
   if (!obj) {
-    return [...new Set(allProps)];
+    return [...new Set(allProps)]
   }
-  
-  const props = Object.getOwnPropertyNames(obj);
-  return getAllProperties(Object.getPrototypeOf(obj), [
-    ...allProps,
-    ...props,
-  ]);
+
+  const props = Object.getOwnPropertyNames(obj)
+  return getAllProperties(Object.getPrototypeOf(obj), [...allProps, ...props])
 }
 
-var moduleNames;
-export function generateTreeCode(node) {
-  function getModuleNames(node) {
+let moduleNames
+export function generateTreeCode (node) {
+  function getModuleNames (node) {
     if (node.type === 'module_declaration') {
-      return [node.child(1).text];
-    }
-    else {
-      return node.namedChildren.map(getModuleNames).flat();
+      return [node.child(1).text]
+    } else {
+      return node.namedChildren.map(getModuleNames).flat()
     }
   }
 
-  moduleNames = getModuleNames(node);
-  return generateCode(node);
+  moduleNames = getModuleNames(node)
+  return generateCode(node)
 }
 
-export function generateCode(node) {
-  const syntax = jscadSyntax;
+export function generateCode (node) {
+  const syntax = jscadSyntax
   if (!node) {
-    throw new Error('Node not provided');
+    throw new Error('Node not provided')
   }
-  const type = node.type;
+  const type = node.type
   if (!syntax[type]) {
-    let e = new Error(`Syntax not found for type: ${type}`);
-    e.node = node;
-    throw e;
+    const e = new Error(`Syntax not found for type: ${type}`)
+    e.node = node
+    throw e
   }
 
   // if (STOP_PROCESSIMG) { return; }
 
   try {
-    process.stdout.write(`${node.type} `);
-    var result = '';
+    process.stdout.write(`${node.type} `)
+    let result = ''
 
-    const open = syntax[type]?.open || '';
-    const close = syntax[type]?.close || '';
-    const separator = syntax[type]?.separator || '';
+    const open = syntax[type]?.open || ''
+    const close = syntax[type]?.close || ''
+    const separator = syntax[type]?.separator || ''
     if ('generator' in syntax[type]) {
-      result = syntax[type].generator(node);
-    }
-    else if ('children' in syntax[type]) {
-      const children = syntax[type].children === 'all'
-        ? node.namedChildren.map(namedChild => generateCode(namedChild))
-        : syntax[type].children.map(child => {
-          const childNode = (child.hasOwnProperty('childIndex'))
-            ? node.children[child.childIndex]
-            : node[child.name];
-          if (!childNode) {
-              throw new {...Error(`Child node not found: ${child.name}`), node: node};
+      result = syntax[type].generator(node)
+    } else if ('children' in syntax[type]) {
+      const children =
+        syntax[type].children === 'all'
+          ? node.namedChildren.map((namedChild) => generateCode(namedChild))
+          : syntax[type].children.map((child) => {
+            const childNode = child.hasOwnProperty('childIndex')
+              ? node.children[child.childIndex]
+              : node[child.name]
+            if (!childNode) {
+              throw new {
+                ...Error(`Child node not found: ${child.name}`),
+                node
+              }()
             }
-            return child.isText ? childNode.text : generateCode(childNode);
-          });
-      result = `${open}${children.join(separator)}${close}`;
+            return child.isText ? childNode.text : generateCode(childNode)
+          })
+      result = `${open}${children.join(separator)}${close}`
     } else {
-      result = node.text;
+      result = node.text
     }
 
-    // if ((node.parent?.type == 'source_file') && (node.type != 'module_declaration') 
+    // if ((node.parent?.type == 'source_file') && (node.type != 'module_declaration')
     //     || (node.parent?.type == 'module_declaration')) {
     //   process.stdout.write(`\n<${result}>\n`);
     // }
-    
-    return result;
+
+    return result
   } catch (error) {
     if (error.node) {
-      node = error.node;
+      node = error.node
     }
     // console.trace(error);
-    process.stdout.write('\n');
-    out('red', `node type: `)
-    console.log(`${node.type}, text: ${node.text}`);
-    const rule = grammar.rules[node.type];
+    process.stdout.write('\n')
+    out('red', 'node type: ')
+    console.log(`${node.type}, text: ${node.text}`)
+    const rule = grammar.rules[node.type]
     if (rule) {
-      out('red', `Grammar rule: `)
-      console.log(`${JSON.stringify(rule)}`);
+      out('red', 'Grammar rule: ')
+      console.log(`${JSON.stringify(rule)}`)
     }
-    throw error;
+    throw error
   }
 }
 
-
-
-function generateFunctionCall(node) {
-  const functionName = node.child(0).text;
-  const args = [];
+function generateFunctionCall (node) {
+  const functionName = node.child(0).text
+  const args = []
   for (let i = 1; i < node.childCount; i++) {
-    args.push(generateCode(node.child(i)));
+    args.push(generateCode(node.child(i)))
   }
   // if (functionName === 'cube') {
   //   return `CSG.${functionName}({size: [${args.join(', ')}]})`;
   // } else
   if (functionName === 'sphere') {
-    return `CSG.${functionName}({radius: ${args[0]}})`;
+    return `CSG.${functionName}({radius: ${args[0]}})`
   } else if (functionName === 'cylinder') {
-    return `CSG.${functionName}({radius: ${args[0]}, height: ${args[1]}})`;
+    return `CSG.${functionName}({radius: ${args[0]}, height: ${args[1]}})`
   } else if (functionName === 'len') {
-    return `${args[0]}.length`;
+    return `${args[0]}.length`
   } else {
     const mapping = {
       floor: 'Math.floor',
@@ -550,10 +570,10 @@ function generateFunctionCall(node) {
       min: 'Math.min',
       max: 'Math.max',
       random: 'Math.random',
-      sqrt: 'Math.sqrt',
+      sqrt: 'Math.sqrt'
       // Add more mappings here
-    };
-    const mappedName = mapping[functionName] || functionName;
-    return `${mappedName}(${args.join(', ')})`;
+    }
+    const mappedName = mapping[functionName] || functionName
+    return `${mappedName}(${args.join(', ')})`
   }
 }
