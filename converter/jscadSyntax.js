@@ -18,8 +18,9 @@ function endCurrentScope () {
 }
 
 const transformChainCounter = [0]
-const inTransformChain = () =>
-  transformChainCounter[transformChainCounter.length - 1] > 0
+
+const inTransformChain = () => transformChainCounter[transformChainCounter.length - 1] > 0
+
 function pushTransformChain () {
   transformChainCounter.push(0)
 }
@@ -32,6 +33,59 @@ function startTransformChain () {
 function endTransformChain () {
   transformChainCounter[transformChainCounter.length - 1]--
 }
+
+/*
+ * helper functions for various conversions
+ */
+
+const convertArguments = (args, children) => {
+  const keys = [] // keys, in order of insertion (names of positional arguments)
+  for (const key of args.keys()) {
+    keys.push(key)
+  }
+
+  let i = 0
+  while (children.namedChild(i)) {
+    const type = children.namedChild(i).type
+    if (type === 'assignment') {
+      const value = `${generateCode(children.namedChild(i))}`
+      const parts = value.split('|') // split named parameters
+      if (parts.length > 1) {
+        // handle named arguments
+        args.set(parts[0], parts[1])
+      } else {
+        // handle positional arguments
+        if (i < keys.length) {
+          const key = keys[i]
+          args.set(key, parts[0])
+        }
+      }
+    }
+    i++
+  }
+  return args
+}
+
+const convertVector3 = (value) => {
+  if (value.startsWith('[')) return value
+  return `[${value}, ${value}, ${value}]`
+}
+
+
+/*
+ * helper functions to convert the various SCAD primitives
+ */
+
+const convertCube = (namedargs) => {
+  const size = convertVector3(namedargs.get('size'))
+  const center = namedargs.get('center')
+  if (center.toLowerCase() === 'true') {
+    return `cuboid({size: ${size}})`
+  }
+  // need to position the cuboid as per SCAD
+  return `cuboid({size: ${size}}, center: vec3.scale(vec3.create(), ${size}, 0.5)))`
+}
+
 
 const helperFunctions = [
   dedent`
@@ -94,16 +148,18 @@ const jscadSyntax = {
     generator: (node) => {
       const leftNode = generateCode(node.namedChild(0)) // variable name
       const rightNode = generateCode(node.namedChild(1))
-      let code
+
+      if (node.parent?.type == 'arguments') {
+        return `${leftNode}|${rightNode}` // formatted for each split
+      }
 
       // Check if variable is already assigned in current scope
       if (!scopes[scopes.length - 1].has(leftNode)) {
-        code = `let ${leftNode} = ${rightNode}\n`
+        return `let ${leftNode} = ${rightNode}\n`
         scopes[scopes.length - 1].add(leftNode)
       } else {
-        code = `${leftNode} = ${rightNode}\n`
+        return `${leftNode} = ${rightNode}\n`
       }
-      return code
     }
   },
   comment: {
@@ -282,8 +338,15 @@ const jscadSyntax = {
           .map((i) => generateCode(i))
           .join(', ')}          
           )`,
-        cube: (args) =>
-          `cuboid({size: ${args}, center: [(${generateCode(node.child(1).namedChild(0).namedChild(0))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(1))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(2))})/2]})`,
+        cube: () => {
+            // cube allows:
+            // - default arguments
+            // - positional arguments; size, center
+            // - named arguments; size=size, center=boolean
+            let namedargs = new Map([['size', '[1, 1, 1]'], ['center', 'false']])
+            namedargs = convertArguments(namedargs, node.child(1))
+            return convertCube(namedargs)
+          },
         rotate: (args) => dedent`rotateDegrees(${args})`
       }
 
@@ -577,3 +640,16 @@ function generateFunctionCall (node) {
     return `${mappedName}(${args.join(', ')})`
   }
 }
+
+/*
+ * Dump the given node for debugging
+ */
+export const dumpNode = (node, depth = 0) => {
+  const indent = '  '.repeat(depth)
+  let result = `${indent}${node.type}\n`
+  for (let i = 0; i < node.namedChildCount; i++) {
+    result += dumpNode(node.namedChild(i), depth + 1)
+  }
+  return result
+}
+
