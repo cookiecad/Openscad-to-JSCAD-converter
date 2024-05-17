@@ -82,8 +82,9 @@ const jscadSyntax = {
       const { primitives, booleans, transforms, extrusions } = jscad;
       const { cube, sphere, cylinder, polygon, cuboid } = primitives;
       const { union, subtract, intersection } = booleans;
-      const { translate, rotate, scale, mirror } = transforms;\n
+      const { translate, rotate, scale, mirror } = transforms;
       const { extrudeLinear } = extrusions
+      const { vec3 } = jscad.maths;
       ${helperFunctions.join('\n')}\n
       const jscadObjects = [];\n`,
     close: '\nreturn jscadObjects;\n',
@@ -165,11 +166,22 @@ const jscadSyntax = {
     generator: generateFunctionCall
   },
   arguments: {
-    open: '',
-    close: '',
-    children: 'all',
-    separator: ', '
+    generator: (node) => {
+      const args = [];
+      for (let i = 0; i < node.namedChildren?.length; i++) {
+        const child = node.namedChild(i);
+        args.push(generateCode(child));
+      }
+      return args.join(', ');
+    }
   },
+  named_argument: {
+    generator: (node) => {
+      const key = generateCode(node.namedChild(0));
+      const value = generateCode(node.namedChild(1));
+      return `${key}: ${value}`;
+    }
+  },  
   ternary_expression: {
     open: '',
     close: '',
@@ -261,52 +273,89 @@ const jscadSyntax = {
   },
   module_call: {
     generator: (node) => {
-      const mapping = {
-        difference: (args) => `subtract(${args})`,
-        linear_extrude: (
-          args
-        ) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
-        ${node
-          .child(1)
-          .namedChildren.slice(1)
-          .map((i) => generateCode(i))
-          .join(', ')}          
-          )`,
-        polygon: (args) => `polygonEnsureCounterclockwise({points: ${args}})`,
-        mirror: (
-          args
-        ) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
-        ${node
-          .child(1)
-          .namedChildren.slice(1)
-          .map((i) => generateCode(i))
-          .join(', ')}          
-          )`,
-        cube: (args) =>
-          `cuboid({size: ${args}, center: [(${generateCode(node.child(1).namedChild(0).namedChild(0))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(1))})/2,(${generateCode(node.child(1).namedChild(0).namedChild(2))})/2]})`,
-        rotate: (args) => dedent`rotateDegrees(${args})`
-      }
+      // const mapping = {
+      //   difference: (args) => `subtract(${args})`,
+      //   linear_extrude: (
+      //     args
+      //   ) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
+      //   ${node
+      //     .child(1)
+      //     .namedChildren.slice(1)
+      //     .map((i) => generateCode(i))
+      //     .join(', ')}          
+      //     )`,
+      //   polygon: (args) => `polygonEnsureCounterclockwise({points: ${args}})`,
+      //   mirror: (
+      //     args
+      //   ) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
+      //   ${node
+      //     .child(1)
+      //     .namedChildren.slice(1)
+      //     .map((i) => generateCode(i))
+      //     .join(', ')}          
+      //     )`,
+      //   rotate: (args) => dedent`rotateDegrees(${args})`
+      // }
 
       const name = node.child(0).text
-      let args, result
+      const argumentsNode = node.child(1)
+      let result
       // if (name === 'linear_extrude') {
       //   //For linear extrude, the first argument is the height, the rest are the objects
       //   //TODO add support for named parameters
       //   args = dedent`{height: ${generateCode(node.child(1).namedChild(0))}}, ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }`
       // }
       // else {
-      args = generateCode(node.child(1))
-      // }
+      // args = generateCode(node.child(1))
+      // const args = generateCode(argumentsNode);
 
-      if (mapping[name]) {
-        result = '\n' + mapping[name](args)
-      } else {
-        if (moduleNames.includes(name)) {
-          result = `\n...${name}(${args})`
-        } else {
-          result = `\n${name}(${args})`
-        }
+      //Map openscad function names and parameters to jscad
+      
+      const convertVector3 = (value) => {
+        if (value === undefined) return ''
+        if (value.startsWith('[')) return value
+        return `[${value}, ${value}, ${value}]`
       }
+      //Extract the arguments from the function call they can be passed a number of ways
+      let parsedArgs = parseFunctionArguments(argumentsNode)
+      // let children = node.child(1)?.namedChildren?.slice(1)?.map((i) => generateCode(i)).join(', ')
+      let children = parsedArgs[1];
+      if (name === 'cube') {
+        let size = convertVector3(parsedArgs[0] || parsedArgs['size'] || '1');
+        let center = parsedArgs[1] || parsedArgs['center'];  
+        let centerStr = (center?.toLowerCase() === 'true') ? '' : `vec3.scale(vec3.create(), ${size}, 0.5)`;
+        result = `cuboid({size: ${size}${centerStr && `, center: ${centerStr}`}})`
+      }
+      else if (name === 'linear_extrude') {
+        result = `extrudeLinear({height: ${parsedArgs[0] || parsedArgs['height']}}, ${children})`
+      }
+      else if (name === 'polygon') {
+        let points = parsedArgs[0] || parsedArgs['points'];
+        result = `polygonEnsureCounterclockwise({points: ${points}})`
+      }
+      else if (name === 'mirror') {
+        let normal = parsedArgs[0] || parsedArgs['v'];
+        result = `mirror({normal: ${normal}}, ${children})`
+      }
+      else if (name === 'rotate') {
+        let degrees = convertVector3(parsedArgs[0] || parsedArgs['a']);
+        let vector = parsedArgs['v'] || (parsedArgs.length > 2 ? parsedArgs[1] : '');
+        if (vector) throw new Error(`${node.text}: Rotate around vector is not yet implemented`)
+          result = `rotateDegrees(${degrees}, ${children})`
+      }
+      else if (name === 'difference') {
+        result = `subtract(${generateCode(node.child(1))})`
+      }
+      else {
+        let args = node.namedChildren.slice(1).map(generateCode).join(', ')
+        result = `${name}(${args})`
+      }
+      
+      // if (moduleNames.includes(name)) { // If the module name is function in the file
+      //   return `\n...${name}(${args})`
+      // } else {
+      //   return `\n${name}(${parsedArgs})`
+      // }
       // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
       if (node.parent?.parent?.type == 'union_block') {
         result = result + ','
@@ -367,7 +416,7 @@ const jscadSyntax = {
       endTransformChain()
 
       if (!inTransformChain()) {
-        result = `jscadObjects.push(${result}\n)`
+        result = `jscadObjects.push(${result}\n);\n`
       }
 
       return result
@@ -409,6 +458,28 @@ const jscadSyntax = {
       return ''
     }
   }
+}
+
+function parseFunctionArguments(node) {
+  const args = {};
+  const positionalArgs = [];
+  
+  const childrenCount = node.namedChildren?.length;
+
+  for (let i = 0; i < childrenCount; i++) {
+    const child = node.namedChild(i);
+    
+    //Openscad allows assignment as a way to pass named arguments
+    if (child.type === 'named_argument' || child.type === 'assignment')  {
+      const key = generateCode(child.namedChild(0));
+      const value = generateCode(child.namedChild(1));
+      args[key] = value;
+    } else {
+      args[i] = generateCode(child);
+    }
+  }
+  
+  return args;
 }
 
 function customNodeCopy (node, map = new Map()) {
@@ -539,6 +610,8 @@ export function generateCode (node) {
 }
 
 function generateFunctionCall (node) {
+  //We can probably share code with module call 
+
   const functionName = node.child(0).text
   const args = []
   for (let i = 1; i < node.childCount; i++) {

@@ -6,6 +6,7 @@ import chalk from 'chalk'
 import dedent from 'dedent'
 
 import { generateTreeCode } from './jscadSyntax.js'
+import * as prettier from 'prettier'
 
 const log = (color, msg) => console.log(chalk[color](msg))
 const out = (color, msg) => process.stdout.write(chalk[color](msg))
@@ -52,7 +53,9 @@ const printNode = (node, depth) => {
 fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0))
 
 // Traverse the syntax tree and generate JSCAD code
-const jscadCode = generateTreeCode(tree.rootNode)
+var jscadCode = generateTreeCode(tree.rootNode)
+jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
+
 
 // Output the JSCAD code
 console.log('JSCAD code ---------------:')
