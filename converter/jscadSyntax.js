@@ -650,3 +650,15 @@ function generateFunctionCall (node) {
     return `${mappedName}(${args.join(', ')})`
   }
 }
+
+/*
+ * Dump the given node for debugging
+ */
+export const dumpNode = (node, depth = 0) => {
+  const indent = '  '.repeat(depth)
+  let result = `${indent}${node.type}\n`
+  for (let i = 0; i < node.namedChildCount; i++) {
+    result += dumpNode(node.namedChild(i), depth + 1)
+  }
+  return result
+}
