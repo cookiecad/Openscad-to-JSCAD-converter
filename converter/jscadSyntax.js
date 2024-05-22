@@ -80,7 +80,7 @@ const jscadSyntax = {
   source_file: {
     open: dedent`
       const { primitives, booleans, transforms, extrusions } = jscad;
-      const { cube, sphere, cylinder, polygon, cuboid } = primitives;
+      const { cube, sphere, cylinder, cylinderElliptic, polygon, cuboid } = primitives;
       const { union, subtract, intersection } = booleans;
       const { translate, rotate, scale, mirror } = transforms;
       const { extrudeLinear } = extrusions
@@ -320,11 +320,13 @@ const jscadSyntax = {
       let parsedArgs = parseFunctionArguments(argumentsNode)
       // let children = node.child(1)?.namedChildren?.slice(1)?.map((i) => generateCode(i)).join(', ')
       let children = parsedArgs[1];
+      //TODO: We may need a helper function to determine at runtime if size is a vector or a number. Center requires a vector
+      const centerString = (center, size) => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
       if (name === 'cube') {
         let size = convertVector3(parsedArgs[0] || parsedArgs['size'] || '1');
         let center = parsedArgs[1] || parsedArgs['center'];  
-        let centerStr = (center?.toLowerCase() === 'true') ? '' : `vec3.scale(vec3.create(), ${size}, 0.5)`;
-        result = `cuboid({size: ${size}${centerStr && `, center: ${centerStr}`}})`
+        let centerStr = centerString(center, size);
+        result = `cuboid({size: ${size}${centerStr}})`
       }
       else if (name === 'linear_extrude') {
         result = `extrudeLinear({height: ${parsedArgs[0] || parsedArgs['height']}}, ${children})`
@@ -341,10 +343,27 @@ const jscadSyntax = {
         let degrees = convertVector3(parsedArgs[0] || parsedArgs['a']);
         let vector = parsedArgs['v'] || (parsedArgs.length > 2 ? parsedArgs[1] : '');
         if (vector) throw new Error(`${node.text}: Rotate around vector is not yet implemented`)
-          result = `rotateDegrees(${degrees}, ${children})`
+        result = `rotateDegrees(${degrees}, ${children})`
       }
       else if (name === 'difference') {
         result = `subtract(${generateCode(node.child(1))})`
+      }
+      else if (name === 'cylinder') {
+        let h = parsedArgs[0] || parsedArgs['h'];
+        let r1 = parsedArgs[1] || parsedArgs['r'] || parsedArgs['r1']
+          || (parsedArgs['d'] && `${parsedArgs['d']} / 2`)
+          || (parsedArgs['d1'] && `${parsedArgs['d1']} / 2`)
+          || '1'
+        let r2 = parsedArgs[2] || parsedArgs['r2'] || (parsedArgs['d2'] && `${parsedArgs['d2']} / 2`);
+        let center = parsedArgs[3] || parsedArgs['center'] || 'false';
+        //TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
+        let centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`);
+        if (r2) {
+          result = `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})`
+        }
+        else {
+          result = `cylinder({height: ${h}, radius: ${r1}${centerStr}})`
+        }
       }
       else {
         let args = node.namedChildren.slice(1).map(generateCode).join(', ')

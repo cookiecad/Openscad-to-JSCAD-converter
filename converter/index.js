@@ -54,7 +54,12 @@ fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0))
 
 // Traverse the syntax tree and generate JSCAD code
 var jscadCode = generateTreeCode(tree.rootNode)
-jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
+try {
+  jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
+}
+catch (e) {
+  console.log('Error formatting code, continuing without formatting', e)
+}
 
 
 // Output the JSCAD code
