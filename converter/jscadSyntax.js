@@ -501,9 +501,12 @@ function parseFunctionArguments(node) {
   return args;
 }
 
+//Recursively copy nodes
 function customNodeCopy (node, map = new Map()) {
   if (map.has(node)) return map.get(node) // if node copy already exists, return it
+  if (!node) return null //A node property can exist but be null
 
+  try {
   const copyNode = {
     type: node.type,
     parent: node.parent,
@@ -517,6 +520,7 @@ function customNodeCopy (node, map = new Map()) {
       return this.children[index]
     }
   }
+  
   map.set(node, copyNode) // add node and its copy to the identity map
 
   copyNode.namedChildren = node.namedChildren.map((i) =>
@@ -530,7 +534,13 @@ function customNodeCopy (node, map = new Map()) {
       copyNode[key] = customNodeCopy(node[key], map)
     }
   })
+
   return copyNode
+}
+catch (e) {
+  console.trace(node)
+}
+
 }
 
 function tabbed (str) {
