@@ -1,82 +1,73 @@
-import fs from 'fs'
-import path from 'path'
-import Parser from 'tree-sitter'
-import OpenSCAD from 'tree-sitter-openscad'
-import chalk from 'chalk'
-import dedent from 'dedent'
+import fs from 'fs';
+import path from 'path';
+import Parser from 'tree-sitter';
+import OpenSCAD from 'tree-sitter-openscad';
+import chalk from 'chalk';
+import dedent from 'dedent';
 
-import { generateTreeCode } from './jscadSyntax.js'
-import * as prettier from 'prettier'
+import { generateTreeCode } from './codeGeneration.js';
+import * as prettier from 'prettier';
+import { dumpNode } from './nodeHelpers.js';  
 
-const log = (color, msg) => console.log(chalk[color](msg))
-const out = (color, msg) => process.stdout.write(chalk[color](msg))
+const log = (color, msg) => console.log(chalk[color](msg));
+const out = (color, msg) => process.stdout.write(chalk[color](msg));
 
 // Load the OpenSCAD grammar
-const parser = new Parser()
-parser.setLanguage(OpenSCAD)
+const parser = new Parser();
+parser.setLanguage(OpenSCAD);
 
 // Read the OpenSCAD file
 // Take the filename from the command line arguments
-const filename = process.argv[2]
+const filename = process.argv[2];
 if (!filename) {
   console.error(
     'No filename provided. Usage: node index.js <filename.scad> <output folder>?'
-  )
-  process.exit(1)
+  );
+  process.exit(1);
 }
 
-const outputFolder = process.argv[3] || './output'
+const outputFolder = process.argv[3] || './output';
 
-const code = fs.readFileSync(filename, 'utf8')
+const code = fs.readFileSync(filename, 'utf8');
 
 // Parse the OpenSCAD code
-const tree = parser.parse(code)
+const tree = parser.parse(code);
 
 // output the tree of node types to a file with each node on a separate line indented by its depth
-const openscadTreeFilename = path.join(outputFolder, 'openscadTree.txt')
+const openscadTreeFilename = path.join(outputFolder, 'openscadTree.txt');
 const printNode = (node, depth) => {
-  const indent = '  '.repeat(depth)
-  let result = `${indent}${node.type}\n`
-  for (let i = 0; i < node.namedChildCount; i++) {
-    result += printNode(node.namedChild(i), depth + 1)
+  const indent = '  '.repeat(depth);
+  let result = `${indent}${node.type}\n`;
+  for (let i = 0; i < node.childCount; i++) {
+    result += printNode(node.child(i), depth + 1);
   }
 
-  // if (node.parent?.type == 'source_file') {
   if (
     (node.parent?.type == 'source_file' && node.type != 'module_declaration') ||
     node.parent?.type == 'module_declaration'
   ) {
-    result = `${node.text}\n<\n${result}>\n`
+    result = `${node.text}\n<\n${result}>\n`;
   }
-  return result
+  return result;
 }
-fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0))
+fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0));
 
 // Traverse the syntax tree and generate JSCAD code
-var jscadCode = generateTreeCode(tree.rootNode)
+let jscadCode = generateTreeCode(tree.rootNode);
 try {
-  jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
+  jscadCode = await prettier.format(jscadCode, { parser: 'babel' });
+} catch (e) {
+  console.log('Error formatting code, continuing without formatting', e);
 }
-catch (e) {
-  console.log('Error formatting code, continuing without formatting', e)
-}
-
 
 // Output the JSCAD code
-console.log('JSCAD code ---------------:')
-console.log(jscadCode)
+console.log('JSCAD code ---------------:');
+console.log(jscadCode);
 
-// jscadCode = `const { primitives, booleans, transforms } = jscad;
-// const { cube, sphere, cylinder } = primitives;
-// const { union, difference, intersection } = booleans;
-// const { translate, rotate, scale } = transforms;\n
-// ${jscadCode}
-// `
-
-const outputJscadFilename = path.join(outputFolder, 'output.jscad')
-const outputJsFilename = path.join(outputFolder, 'output.js')
-const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js')
-fs.writeFileSync(outputJscadFilename, jscadCode)
+const outputJscadFilename = path.join(outputFolder, 'output.jscad');
+const outputJsFilename = path.join(outputFolder, 'output.js');
+const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js');
+fs.writeFileSync(outputJscadFilename, jscadCode);
 fs.writeFileSync(
   outputJsFilename,
   dedent`
@@ -85,7 +76,7 @@ export function main() {
   ${jscadCode}
 }
 `
-)
+);
 
 fs.writeFileSync(
   outputCaditJsFilename,
@@ -94,9 +85,9 @@ function main() {
   ${jscadCode}
 }
 let result =  jscad.booleans.union(main());
-console.log(result)
+console.log(result);
 `
-)
+);
 
 const STOP_PROCESSIMG = false
 
@@ -236,127 +227,127 @@ const STOP_PROCESSIMG = false
 //   return `{${properties.join(', ')}}`;
 // }
 
-function generatePropertyAccess (node) {
-  const object = generateJSCAD(node.child(0))
-  const property = generateJSCAD(node.child(2))
-  return `${object}.${property}`
-}
+// function generatePropertyAccess (node) {
+//   const object = generateJSCAD(node.child(0))
+//   const property = generateJSCAD(node.child(2))
+//   return `${object}.${property}`
+// }
 
-function generateAssignmentExpression (node) {
-  const left = generateJSCAD(node.child(0))
-  const right = generateJSCAD(node.child(2))
-  return `${left} = ${right}`
-}
+// function generateAssignmentExpression (node) {
+//   const left = generateJSCAD(node.child(0))
+//   const right = generateJSCAD(node.child(2))
+//   return `${left} = ${right}`
+// }
 
-function generateVariableDeclaration (node) {
-  const kind = node.child(0).text
-  const declarations = []
-  for (let i = 1; i < node.childCount; i++) {
-    declarations.push(generateJSCAD(node.child(i)))
-  }
-  process.stdout.write('\n')
-  return `${kind} ${declarations.join(', ')}\n`
-}
+// function generateVariableDeclaration (node) {
+//   const kind = node.child(0).text
+//   const declarations = []
+//   for (let i = 1; i < node.childCount; i++) {
+//     declarations.push(generateJSCAD(node.child(i)))
+//   }
+//   process.stdout.write('\n')
+//   return `${kind} ${declarations.join(', ')}\n`
+// }
 
-function generateVariableDeclarator (node) {
-  const name = generateJSCAD(node.child(0))
-  const init = node.childCount > 1 ? ` = ${generateJSCAD(node.child(1))}` : ''
-  return `let ${name}${init}`
-}
+// function generateVariableDeclarator (node) {
+//   const name = generateJSCAD(node.child(0))
+//   const init = node.childCount > 1 ? ` = ${generateJSCAD(node.child(1))}` : ''
+//   return `let ${name}${init}`
+// }
 
-function generateIfStatement (node) {
-  const test = generateJSCAD(node.child(2))
-  const consequent = generateJSCAD(node.child(4))
-  const alternate = generateJSCAD(node.child(6))
-  let result = `if (${test}) ${consequent}`
-  if (alternate) {
-    result += ` else ${alternate}`
-  }
-  return result
-}
+// function generateIfStatement (node) {
+//   const test = generateJSCAD(node.child(2))
+//   const consequent = generateJSCAD(node.child(4))
+//   const alternate = generateJSCAD(node.child(6))
+//   let result = `if (${test}) ${consequent}`
+//   if (alternate) {
+//     result += ` else ${alternate}`
+//   }
+//   return result
+// }
 
-function generateElseClause (node) {
-  return generateJSCAD(node.child(1))
-}
+// function generateElseClause (node) {
+//   return generateJSCAD(node.child(1))
+// }
 
-function generateWhileStatement (node) {
-  const test = generateJSCAD(node.child(2))
-  const body = generateJSCAD(node.child(4))
-  return `while (${test}) ${body}`
-}
+// function generateWhileStatement (node) {
+//   const test = generateJSCAD(node.child(2))
+//   const body = generateJSCAD(node.child(4))
+//   return `while (${test}) ${body}`
+// }
 
-function generateDoStatement (node) {
-  const body = generateJSCAD(node.child(1))
-  const test = generateJSCAD(node.child(3))
-  return `do ${body} while (${test})`
-}
+// function generateDoStatement (node) {
+//   const body = generateJSCAD(node.child(1))
+//   const test = generateJSCAD(node.child(3))
+//   return `do ${body} while (${test})`
+// }
 
-function generateForStatement (node) {
-  const init = generateJSCAD(node.child(2))
-  const test = generateJSCAD(node.child(4))
-  const update = generateJSCAD(node.child(6))
-  const body = generateJSCAD(node.child(8))
-  return `for (${init}; ${test}; ${update}) ${body}`
-}
+// function generateForStatement (node) {
+//   const init = generateJSCAD(node.child(2))
+//   const test = generateJSCAD(node.child(4))
+//   const update = generateJSCAD(node.child(6))
+//   const body = generateJSCAD(node.child(8))
+//   return `for (${init}; ${test}; ${update}) ${body}`
+// }
 
-function generateBlock (node) {
-  const statements = []
-  for (let i = 1; i < node.childCount - 1; i++) {
-    statements.push(generateJSCAD(node.child(i)))
-  }
-  return `{${statements.join('; ')}}`
-}
+// function generateBlock (node) {
+//   const statements = []
+//   for (let i = 1; i < node.childCount - 1; i++) {
+//     statements.push(generateJSCAD(node.child(i)))
+//   }
+//   return `{${statements.join('; ')}}`
+// }
 
-function generateReturnStatement (node) {
-  const argument = generateJSCAD(node.child(1))
-  return `return ${argument}`
-}
+// function generateReturnStatement (node) {
+//   const argument = generateJSCAD(node.child(1))
+//   return `return ${argument}`
+// }
 
-function generateComment (node) {
-  // Jscad and openscad use // for comments
-  process.stdout.write('\n')
-  return `${node.text}\n`
-}
+// function generateComment (node) {
+//   // Jscad and openscad use // for comments
+//   process.stdout.write('\n')
+//   return `${node.text}\n`
+// }
 
-function generateAssignment (node) {
-  if (node.type === 'assignment') {
-    const left = generateJSCAD(node.child(0))
-    const right = generateJSCAD(node.child(1))
-    process.stdout.write('\n')
-    return `${left} = ${right};\n`
-  } else if (node.type === '=') {
-    const right = generateJSCAD(node.nextNamedSibling)
-    return `${right}`
-  }
-}
+// function generateAssignment (node) {
+//   if (node.type === 'assignment') {
+//     const left = generateJSCAD(node.child(0))
+//     const right = generateJSCAD(node.child(1))
+//     process.stdout.write('\n')
+//     return `${left} = ${right};\n`
+//   } else if (node.type === '=') {
+//     const right = generateJSCAD(node.nextNamedSibling)
+//     return `${right}`
+//   }
+// }
 
-function generateList (node) {
-  let result = '['
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i)
-    if (child) {
-      result += generateJSCAD(child)
-      if (i < node.namedChildCount - 1) {
-        result += ', '
-      }
-    }
-  }
-  result += ']'
-  return result
-}
+// function generateList (node) {
+//   let result = '['
+//   for (let i = 0; i < node.namedChildCount; i++) {
+//     const child = node.namedChild(i)
+//     if (child) {
+//       result += generateJSCAD(child)
+//       if (i < node.namedChildCount - 1) {
+//         result += ', '
+//       }
+//     }
+//   }
+//   result += ']'
+//   return result
+// }
 
-function generateArguments (node) {
-  let result = '('
-  for (let i = 0; i < node.namedChildCount; i++) {
-    const child = node.namedChild(i)
-    result += generateJSCAD(child)
-    if (i < node.namedChildCount - 1) {
-      result += ', '
-    }
-  }
-  result += ')'
-  return result
-}
+// function generateArguments (node) {
+//   let result = '('
+//   for (let i = 0; i < node.namedChildCount; i++) {
+//     const child = node.namedChild(i)
+//     result += generateJSCAD(child)
+//     if (i < node.namedChildCount - 1) {
+//       result += ', '
+//     }
+//   }
+//   result += ')'
+//   return result
+// }
 
 // function generateTransformChain(node) {
 //   let result = '';

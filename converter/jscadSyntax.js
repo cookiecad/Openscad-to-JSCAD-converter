@@ -1,80 +1,11 @@
+import { generateFunctionCall, generateCode } from './codeGeneration.js'
+import { helperFunctions, out, scopes, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js';
+import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js';
+
 import generatedJscad from "./jscadSyntaxFromGrammar.json" assert { type: "json" }
-import grammar from "tree-sitter-openscad/src/grammar.json" assert { type: "json" }
-import chalk from 'chalk'
-import dedent from 'dedent'
-const log = (color, msg) => console.log(chalk[color](msg))
-const out = (color, msg) => process.stdout.write(chalk[color](msg))
+import dedent from 'dedent';
 
-const scopes = [new Set()] // Initialize the global scope
-
-// Whenever a new block scope starts (module or function)
-function startNewScope () {
-  scopes.push(new Set())
-}
-
-// Whenever a block scope ends
-function endCurrentScope () {
-  scopes.pop()
-}
-
-const transformChainCounter = [0]
-const inTransformChain = () =>
-  transformChainCounter[transformChainCounter.length - 1] > 0
-function pushTransformChain () {
-  transformChainCounter.push(0)
-}
-function popTransformChain () {
-  transformChainCounter.pop()
-}
-function startTransformChain () {
-  transformChainCounter[transformChainCounter.length - 1]++
-}
-function endTransformChain () {
-  transformChainCounter[transformChainCounter.length - 1]--
-}
-
-const helperFunctions = [
-  dedent`
-  function inlineIf(condition, ifTrue, ifFalse) {
-    let jscadObjects = [];
-    if (condition) return ifTrue(jscadObjects)
-    else return ifFalse(jscadObjects)
-  }`,
-
-  dedent`
-  function inlineFor(init, test, increment, body) {
-    let jscadObjects = []
-    for (let i = init; test(i); i = increment(i)) {
-      jscadObjects.push(body(i))
-    }
-    return jscadObjects
-  }
-`,
-  // Rotate degrees, convert all args[0] to radians and pass to rotate along with the rest of the args
-  dedent`
-  function rotateDegrees(...args) {
-    return rotate(args[0].map(i => i * Math.PI / 180), ...args.slice(1));
-  }`,
-
-  // We may need to make sure to only run this for extrudeLinear
-  dedent`
-  //Openscad accepts clockwise polygons for extrude. Ensure polygon points are counter clockwise
-  function polygonEnsureCounterclockwise(...args) {
-    let points = args[0].points;
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      let j = (i + 1) % points.length;
-      area += points[i][0] * points[j][1];
-      area -= points[j][0] * points[i][1];
-    }
-    if (area < 0) {
-      points.reverse();
-    }
-    return polygon(...args);
-  }`
-]
-
-const jscadSyntax = {
+export const jscadSyntax = {
   ...generatedJscad,
 
   source_file: {
@@ -391,17 +322,54 @@ const jscadSyntax = {
   },
   for_block: {
     generator: (node) => {
-      const assignments = node.child(1)
-      const body = generateCode(node.child(2))
-      // assignments is of type parenthesized_assignments
-      const assignment = assignments.namedChildren[0]
-      const varName = assignment.leftNode.text
-      const range = assignment.rightNode
-      const rangeText = generateCode(range)
-      return `for (let ${varName} of ${rangeText}) {\n${tabbed(body)}\n}\n`
+      // const assignments = node.child(1)
+      // const body = generateCode(node.child(2))
+      // // assignments is of type parenthesized_assignments
+      // const assignment = assignments.namedChildren[0]
+      // const varName = assignment.leftNode.text
+      // const range = assignment.rightNode
+      // const rangeText = generateCode(range)
+      // return `for (let ${varName} of ${rangeText}) {\n${tabbed(body)}\n}\n`
+
+
+      // Extract loop variable and values from the assignment
+      const assignmentNode = node.namedChild(0).namedChild(0);
+      const variable = generateCode(assignmentNode.child(0)); // get the variable name
+      const valuesNode = assignmentNode.child(2); // get the range or list node
+
+      let values;
+
+      // Determine if it's a range or list
+      if (valuesNode.type === 'range') {
+        // Handle range
+        const start = generateCode(valuesNode.child(1)) || '0';
+        const increment = valuesNode.childCount === 7 ? generateCode(valuesNode.child(3)) : '1';
+        const end = generateCode(valuesNode.child(valuesNode.childCount === 7 ? 5 : 3));
+        values = `{start: ${start}, increment: ${increment}, end: ${end}}`;
+      } else if (valuesNode.type === 'list') {
+        // Handle list directly
+        values = generateCode(valuesNode);
+      } else {
+        // Fallback to handle as list in case neither range nor list (unexpected case)
+        values = `[${generateCode(valuesNode)}]`;
+      }
+
+      // Generate the body of the loop
+      const body = generateCode(node.namedChild(1));
+      
+      let result;
+      // if (inTransformChain()) {
+      //   result = `\n...inlineFor('${variable}', ${values}, (context) => ${body.trim()}.map(obj => ({...obj, context}))),`
+      // } else {
+        result = dedent`
+          inlineFor(${values}, (${variable}) => {
+            ${body.trim()}\n
+          });\n`
+      // }
+
+      return result;
     }
   },
-
   // [0:fill?max_grid_hexagons_x-1:(len(cols)-1)]
   range: {
     generator: (node) => {
@@ -501,193 +469,6 @@ function parseFunctionArguments(node) {
   return args;
 }
 
-//Recursively copy nodes
-function customNodeCopy (node, map = new Map()) {
-  if (map.has(node)) return map.get(node) // if node copy already exists, return it
-  if (!node) return null //A node property can exist but be null
 
-  try {
-  const copyNode = {
-    type: node.type,
-    parent: node.parent,
-    text: node.text,
-    namedChildren: [],
-    children: [],
-    namedChild: function (index) {
-      return this.namedChildren[index]
-    },
-    child: function (index) {
-      return this.children[index]
-    }
-  }
-  
-  map.set(node, copyNode) // add node and its copy to the identity map
 
-  copyNode.namedChildren = node.namedChildren.map((i) =>
-    customNodeCopy(i, map)
-  )
-  copyNode.children = node.children.map((i) => customNodeCopy(i, map))
-  // Add namedChildren properties to copyNode
-  // Loop through the node keys for keys that end in 'Node' and add them to the copyNode
-  getAllProperties(node).forEach((key) => {
-    if (key.endsWith('Node')) {
-      copyNode[key] = customNodeCopy(node[key], map)
-    }
-  })
 
-  return copyNode
-}
-catch (e) {
-  console.trace(node)
-}
-
-}
-
-function tabbed (str) {
-  return str.replace(/^/gm, '  ')
-}
-
-// Find all methods of an object, up to the root prototype
-function getAllProperties (obj, allProps = []) {
-  if (!obj) {
-    return [...new Set(allProps)]
-  }
-
-  const props = Object.getOwnPropertyNames(obj)
-  return getAllProperties(Object.getPrototypeOf(obj), [...allProps, ...props])
-}
-
-let moduleNames
-export function generateTreeCode (node) {
-  function getModuleNames (node) {
-    if (node.type === 'module_declaration') {
-      return [node.child(1).text]
-    } else {
-      return node.namedChildren.map(getModuleNames).flat()
-    }
-  }
-
-  moduleNames = getModuleNames(node)
-  return generateCode(node)
-}
-
-export function generateCode (node) {
-  const syntax = jscadSyntax
-  if (!node) {
-    throw new Error('Node not provided')
-  }
-  const type = node.type
-  if (!syntax[type]) {
-    const e = new Error(`Syntax not found for type: ${type}`)
-    e.node = node
-    throw e
-  }
-
-  // if (STOP_PROCESSIMG) { return; }
-
-  try {
-    process.stdout.write(`${node.type} `)
-    let result = ''
-
-    const open = syntax[type]?.open || ''
-    const close = syntax[type]?.close || ''
-    const separator = syntax[type]?.separator || ''
-    if ('generator' in syntax[type]) {
-      result = syntax[type].generator(node)
-    } else if ('children' in syntax[type]) {
-      const children =
-        syntax[type].children === 'all'
-          ? node.namedChildren.map((namedChild) => generateCode(namedChild))
-          : syntax[type].children.map((child) => {
-            const childNode = child.hasOwnProperty('childIndex')
-              ? node.children[child.childIndex]
-              : node[child.name]
-            if (!childNode) {
-              throw new {
-                ...Error(`Child node not found: ${child.name}`),
-                node
-              }()
-            }
-            return child.isText ? childNode.text : generateCode(childNode)
-          })
-      result = `${open}${children.join(separator)}${close}`
-    } else {
-      result = node.text
-    }
-
-    // if ((node.parent?.type == 'source_file') && (node.type != 'module_declaration')
-    //     || (node.parent?.type == 'module_declaration')) {
-    //   process.stdout.write(`\n<${result}>\n`);
-    // }
-
-    return result
-  } catch (error) {
-    if (error.node) {
-      node = error.node
-    }
-    // console.trace(error);
-    process.stdout.write('\n')
-    out('red', 'node type: ')
-    console.log(`${node.type}, text: ${node.text}`)
-    const rule = grammar.rules[node.type]
-    if (rule) {
-      out('red', 'Grammar rule: ')
-      console.log(`${JSON.stringify(rule)}`)
-    }
-    throw error
-  }
-}
-
-function generateFunctionCall (node) {
-  //We can probably share code with module call 
-
-  const functionName = node.child(0).text
-  const args = []
-  for (let i = 1; i < node.childCount; i++) {
-    args.push(generateCode(node.child(i)))
-  }
-  // if (functionName === 'cube') {
-  //   return `CSG.${functionName}({size: [${args.join(', ')}]})`;
-  // } else
-  if (functionName === 'sphere') {
-    return `CSG.${functionName}({radius: ${args[0]}})`
-  } else if (functionName === 'cylinder') {
-    return `CSG.${functionName}({radius: ${args[0]}, height: ${args[1]}})`
-  } else if (functionName === 'len') {
-    return `${args[0]}.length`
-  } else {
-    const mapping = {
-      floor: 'Math.floor',
-      ceil: 'Math.ceil',
-      abs: 'Math.abs',
-      sin: 'Math.sin',
-      cos: 'Math.cos',
-      tan: 'Math.tan',
-      asin: 'Math.asin',
-      acos: 'Math.acos',
-      atan: 'Math.atan',
-      exp: 'Math.exp',
-      log: 'Math.log',
-      pow: 'Math.pow',
-      min: 'Math.min',
-      max: 'Math.max',
-      random: 'Math.random',
-      sqrt: 'Math.sqrt'
-      // Add more mappings here
-    }
-    const mappedName = mapping[functionName] || functionName
-    return `${mappedName}(${args.join(', ')})`
-  }
-}
-
-/*
- * Dump the given node for debugging
- */
-export const dumpNode = (node, depth = 0) => {
-  const indent = '  '.repeat(depth)
-  let result = `${indent}${node.type}\n`
-  for (let i = 0; i < node.namedChildCount; i++) {
-    result += dumpNode(node.namedChild(i), depth + 1)
-  }
-  return result
-}
