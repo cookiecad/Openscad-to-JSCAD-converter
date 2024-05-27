@@ -403,7 +403,7 @@ export const jscadSyntax = {
       endTransformChain()
 
       if (!inTransformChain()) {
-        result = `jscadObjects.push(${result}\n);\n`
+        result = `jscadObjects.push(${result}\n)\n`
       }
 
       return result
