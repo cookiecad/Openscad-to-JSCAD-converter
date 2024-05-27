@@ -1,37 +1,37 @@
 /* This contains helper scripts that will be placed in the generated code, plus some utility functions */
 
-import chalk from 'chalk';
-import dedent from 'dedent';
+import chalk from 'chalk'
+import dedent from 'dedent'
 
-export const log = (color, msg) => console.log(chalk[color](msg));
-export const out = (color, msg) => process.stdout.write(chalk[color](msg));
+export const log = (color, msg) => console.log(chalk[color](msg))
+export const out = (color, msg) => process.stdout.write(chalk[color](msg))
 
-export const scopes = [new Set()]; // Initialize the global scope
+export const scopes = [new Set()] // Initialize the global scope
 
 // Whenever a new block scope starts (module or function)
-export function startNewScope() {
-  scopes.push(new Set());
+export function startNewScope () {
+  scopes.push(new Set())
 }
 
 // Whenever a block scope ends
-export function endCurrentScope() {
-  scopes.pop();
+export function endCurrentScope () {
+  scopes.pop()
 }
 
-const transformChainCounter = [0];
+const transformChainCounter = [0]
 
-export const inTransformChain = () => transformChainCounter[transformChainCounter.length - 1] > 0;
-export function pushTransformChain() {
-  transformChainCounter.push(0);
+export const inTransformChain = () => transformChainCounter[transformChainCounter.length - 1] > 0
+export function pushTransformChain () {
+  transformChainCounter.push(0)
 }
-export function popTransformChain() {
-  transformChainCounter.pop();
+export function popTransformChain () {
+  transformChainCounter.pop()
 }
-export function startTransformChain() {
-  transformChainCounter[transformChainCounter.length - 1]++;
+export function startTransformChain () {
+  transformChainCounter[transformChainCounter.length - 1]++
 }
-export function endTransformChain() {
-  transformChainCounter[transformChainCounter.length - 1]--;
+export function endTransformChain () {
+  transformChainCounter[transformChainCounter.length - 1]--
 }
 
 export const helperFunctions = [
@@ -88,4 +88,4 @@ export const helperFunctions = [
     }
     return polygon(...args);
   }`
-];
+]

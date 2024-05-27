@@ -1,73 +1,70 @@
-import fs from 'fs';
-import path from 'path';
-import Parser from 'tree-sitter';
-import OpenSCAD from 'tree-sitter-openscad';
-import chalk from 'chalk';
-import dedent from 'dedent';
+// @ts-check
+import fs from 'fs'
+import path from 'path'
+import Parser from 'tree-sitter'
+import OpenSCAD from 'tree-sitter-openscad'
+import dedent from 'dedent'
 
-import { generateTreeCode } from './codeGeneration.js';
-import * as prettier from 'prettier';
-import { dumpNode } from './nodeHelpers.js';  
-
-const log = (color, msg) => console.log(chalk[color](msg));
-const out = (color, msg) => process.stdout.write(chalk[color](msg));
+import { generateTreeCode } from './codeGeneration.js'
+import * as prettier from 'prettier'
+// import { dumpNode } from './nodeHelpers.js'
 
 // Load the OpenSCAD grammar
-const parser = new Parser();
-parser.setLanguage(OpenSCAD);
+const parser = new Parser()
+parser.setLanguage(OpenSCAD)
 
 // Read the OpenSCAD file
 // Take the filename from the command line arguments
-const filename = process.argv[2];
+const filename = process.argv[2]
 if (!filename) {
   console.error(
     'No filename provided. Usage: node index.js <filename.scad> <output folder>?'
-  );
-  process.exit(1);
+  )
+  process.exit(1)
 }
 
-const outputFolder = process.argv[3] || './output';
+const outputFolder = process.argv[3] || './output'
 
-const code = fs.readFileSync(filename, 'utf8');
+const code = fs.readFileSync(filename, 'utf8')
 
 // Parse the OpenSCAD code
-const tree = parser.parse(code);
+const tree = parser.parse(code)
 
 // output the tree of node types to a file with each node on a separate line indented by its depth
-const openscadTreeFilename = path.join(outputFolder, 'openscadTree.txt');
+const openscadTreeFilename = path.join(outputFolder, 'openscadTree.txt')
 const printNode = (node, depth) => {
-  const indent = '  '.repeat(depth);
-  let result = `${indent}${node.type}\n`;
+  const indent = '  '.repeat(depth)
+  let result = `${indent}${node.type}\n`
   for (let i = 0; i < node.childCount; i++) {
-    result += printNode(node.child(i), depth + 1);
+    result += printNode(node.child(i), depth + 1)
   }
 
   if (
-    (node.parent?.type == 'source_file' && node.type != 'module_declaration') ||
-    node.parent?.type == 'module_declaration'
+    (node.parent?.type === 'source_file' && node.type !== 'module_declaration') ||
+    node.parent?.type === 'module_declaration'
   ) {
-    result = `${node.text}\n<\n${result}>\n`;
+    result = `${node.text}\n<\n${result}>\n`
   }
-  return result;
+  return result
 }
-fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0));
+fs.writeFileSync(openscadTreeFilename, printNode(tree.rootNode, 0))
 
 // Traverse the syntax tree and generate JSCAD code
-let jscadCode = generateTreeCode(tree.rootNode);
+let jscadCode = generateTreeCode(tree.rootNode)
 try {
-  jscadCode = await prettier.format(jscadCode, { parser: 'babel' });
+  jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
 } catch (e) {
-  console.log('Error formatting code, continuing without formatting', e);
+  console.log('Error formatting code, continuing without formatting', e)
 }
 
 // Output the JSCAD code
-console.log('JSCAD code ---------------:');
-console.log(jscadCode);
+console.log('JSCAD code ---------------:')
+console.log(jscadCode)
 
-const outputJscadFilename = path.join(outputFolder, 'output.jscad');
-const outputJsFilename = path.join(outputFolder, 'output.js');
-const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js');
-fs.writeFileSync(outputJscadFilename, jscadCode);
+const outputJscadFilename = path.join(outputFolder, 'output.jscad')
+const outputJsFilename = path.join(outputFolder, 'output.js')
+const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js')
+fs.writeFileSync(outputJscadFilename, jscadCode)
 fs.writeFileSync(
   outputJsFilename,
   dedent`
@@ -76,7 +73,7 @@ export function main() {
   ${jscadCode}
 }
 `
-);
+)
 
 fs.writeFileSync(
   outputCaditJsFilename,
@@ -87,9 +84,9 @@ function main() {
 let result =  jscad.booleans.union(main());
 console.log(result);
 `
-);
+)
 
-const STOP_PROCESSIMG = false
+// const STOP_PROCESSIMG = false
 
 // function generateJSCAD(node) {
 // switch (node.type) {

@@ -1,5 +1,4 @@
-import {main} from '../tree-sitter/output.js';
+// import { main } from '../tree-sitter/output.js'
 
-let output = main();
-//console.log(output);
-
+// const output = main()
+// // console.log(output);

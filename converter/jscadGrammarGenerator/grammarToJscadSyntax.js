@@ -1,4 +1,4 @@
-import { getChildIndex, findValueByType, getStringMemberValue, findContentNameByType, getFieldIndex, getFields } from './utils.js';
+import { getChildIndex, findValueByType, getStringMemberValue, findContentNameByType, getFieldIndex, getFields } from './utils.js'
 
 // Handlers for different member types
 const memberHandlers = {
@@ -29,175 +29,175 @@ const memberHandlers = {
   TOKEN: (member) => ({
     type: 'token',
     content: translateChoiceLikeContent(member.content)
-  }),
-};
+  })
+}
 
-function translateChoiceLikeContent(content) {
+function translateChoiceLikeContent (content) {
   if (content.type === 'SEQ') {
-    return translateSEQ(content);
+    return translateSEQ(content)
   } else if (content.type === 'CHOICE') {
-    return translateCHOICE(content);
+    return translateCHOICE(content)
   } else if (content.type === 'SYMBOL') {
-    return { type: 'symbol', name: content.name };
+    return { type: 'symbol', name: content.name }
   } else if (content.type === 'PATTERN') {
-    return translatePATTERN(content);
+    return translatePATTERN(content)
   } else if (content.type === 'PREC') {
-    return memberHandlers.PREC(content); // Use the PREC handler for nested PREC
+    return memberHandlers.PREC(content) // Use the PREC handler for nested PREC
   } else if (content.type === 'PREC_LEFT') {
-    return memberHandlers.PREC_LEFT(content);
+    return memberHandlers.PREC_LEFT(content)
   } else if (memberHandlers[content.type]) {
-    return memberHandlers[content.type](content);
+    return memberHandlers[content.type](content)
   } else {
-    throw new Error(`Unhandled content type ${content.type}`);
+    throw new Error(`Unhandled content type ${content.type}`)
   }
 }
 
-function translateCHOICE(def) {
+function translateCHOICE (def) {
   if (!def.members || !Array.isArray(def.members)) {
-    throw new Error('Invalid structure for CHOICE definition');
+    throw new Error('Invalid structure for CHOICE definition')
   }
 
   const choices = def.members.map(member => {
     if (memberHandlers[member.type]) {
-      return memberHandlers[member.type](member);
+      return memberHandlers[member.type](member)
     } else {
-      throw new Error(`Unhandled member type ${member.type} in CHOICE`);
+      throw new Error(`Unhandled member type ${member.type} in CHOICE`)
     }
-  });
-  return { type: 'choice', choices };
+  })
+  return { type: 'choice', choices }
 }
 
-function translateSEQ(def) {
+function translateSEQ (def) {
   if (!def.members || !Array.isArray(def.members)) {
-    throw new Error('Invalid structure for SEQ definition');
+    throw new Error('Invalid structure for SEQ definition')
   }
 
-  const open = getStringMemberValue(def.members, 0);
-  const close = getStringMemberValue(def.members, def.members.length - 1);
-  const children = findChildrenSEQ(def.members);
-  return { open, close, children, separator: '' };
+  const open = getStringMemberValue(def.members, 0)
+  const close = getStringMemberValue(def.members, def.members.length - 1)
+  const children = findChildrenSEQ(def.members)
+  return { open, close, children, separator: '' }
 }
 
-function translatePREC_RIGHT(def) {
-  const members = def.content.members;
-  const open = findValueByType(members, 'STRING');
+function translatePREC_RIGHT (def) { // eslint-disable-line camelcase
+  const members = def.content.members
+  const open = findValueByType(members, 'STRING')
   const children = getFields(members).map((field) => ({
     childIndex: getFieldIndex(members, field.name),
     name: field.name,
-    optional: false,
-  }));
-  return { open, close: '', children, separator: '' };
+    optional: false
+  }))
+  return { open, close: '', children, separator: '' }
 }
 
-function translateREPEAT(def) {
+function translateREPEAT (def) {
   if (!def.content || !def.content.members || def.content.members.length === 0) {
-    throw new Error("Invalid 'REPEAT' definition structure.");
+    throw new Error("Invalid 'REPEAT' definition structure.")
   }
 
-  const members = def.content.members;
-  const open = getStringMemberValue(members, 0);
-  const close = getStringMemberValue(members, members.length - 1);
+  const members = def.content.members
+  const open = getStringMemberValue(members, 0)
+  const close = getStringMemberValue(members, members.length - 1)
 
   const children = members.map((member, index) => ({
     childIndex: index,
     name: member.name || `anonymous${index}`,
-    optional: false,
-  }));
+    optional: false
+  }))
 
-  return { open, close, children, separator: def.separator || '' };
+  return { open, close, children, separator: def.separator || '' }
 }
 
-function translatePATTERN(def) {
-  return { type: 'pattern', value: def.value };
+function translatePATTERN (def) {
+  return { type: 'pattern', value: def.value }
 }
 
-function translatePREC(def) {
-  const precedence = def.value;
-  const content = def.content;
+function translatePREC (def) {
+  const precedence = def.value
+  const content = def.content
 
   return {
     type: 'prec',
     precedence,
     content: translateChoiceLikeContent(content)
-  };
+  }
 }
 
-function translatePREC_LEFT(def) {
-  const precedence = def.value;
-  const content = def.content;
+function translatePREC_LEFT (def) { // eslint-disable-line camelcase
+  const precedence = def.value
+  const content = def.content
 
   return {
     type: 'prec_left',
     precedence,
     content: translateChoiceLikeContent(content)
-  };
+  }
 }
 
-function findChildrenSEQ(members) {
-  const repeatContentName = findContentNameByType(members, 'REPEAT');
-  if (repeatContentName === '_item') { return 'all'; }
+function findChildrenSEQ (members) {
+  const repeatContentName = findContentNameByType(members, 'REPEAT')
+  if (repeatContentName === '_item') { return 'all' }
 
-  let allChildren = [];
+  let allChildren = []
   for (let i = 0; i < members.length; i++) {
-    const member = members[i];
+    const member = members[i]
 
     if (member.type === 'SYMBOL') {
       allChildren.push({
         childIndex: getChildIndex(members, member.name),
         name: member.name,
         optional: false
-      });
+      })
     } else if (member.type === 'FIELD' || member.type === 'CHOICE') {
       allChildren.push({
         childIndex: getFieldIndex(members, member.name),
         name: member.name,
         optional: false
-      });
+      })
     } else if (member.type === 'SEQ') {
-      allChildren = [...allChildren, ...findChildrenSEQ(member.members)];
+      allChildren = [...allChildren, ...findChildrenSEQ(member.members)]
     } else if (member.type === 'STRING' && i !== 0 && i !== members.length - 1) {
       allChildren.push({
         childIndex: i,
         name: `string${i}`,
         optional: false
-      });
+      })
     }
   }
-  return allChildren.length > 0 ? allChildren : [];
+  return allChildren.length > 0 ? allChildren : []
 }
 
-export function translate(data) {
+export function translate (data) {
   if (!data || !data.rules || typeof data.rules !== 'object') {
-    throw new Error('Invalid data structure for translation');
+    throw new Error('Invalid data structure for translation')
   }
 
-  const definitions = data.rules;
-  const jscadSyntax = {};
+  const definitions = data.rules
+  const jscadSyntax = {}
 
   for (const [name, definition] of Object.entries(definitions)) {
     if (handlers[definition.type]) {
       try {
-        jscadSyntax[name] = handlers[definition.type](definition);
+        jscadSyntax[name] = handlers[definition.type](definition)
       } catch (error) {
-        console.error(`Error processing ${name}:`, error);
+        console.error(`Error processing ${name}:`, error)
       }
     } else {
-      throw new Error(`No handler for ${definition.type}`);
+      throw new Error(`No handler for ${definition.type}`)
     }
   }
 
-  return jscadSyntax;
+  return jscadSyntax
 }
 
 const handlers = {
   SEQ: translateSEQ,
-  PREC_RIGHT: translatePREC_RIGHT,
+  PREC_RIGHT: translatePREC_RIGHT, // eslint-disable-line camelcase
   REPEAT: translateREPEAT,
   CHOICE: translateCHOICE,
   PATTERN: translatePATTERN,
   PREC: translatePREC,
-  PREC_LEFT: translatePREC_LEFT,
+  PREC_LEFT: translatePREC_LEFT, // eslint-disable-line camelcase
   TOKEN: memberHandlers.TOKEN,
   STRING: memberHandlers.STRING // Add the STRING handler
   // Additional handlers can be added here
-};
+}
