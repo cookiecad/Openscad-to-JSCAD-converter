@@ -248,53 +248,84 @@ export const jscadSyntax = {
         return `[${value}, ${value}, ${value}]`
       }
       //Extract the arguments from the function call they can be passed a number of ways
-      let parsedArgs = parseFunctionArguments(argumentsNode)
-      // let children = node.child(1)?.namedChildren?.slice(1)?.map((i) => generateCode(i)).join(', ')
-      let children = parsedArgs[1];
+      let args = parseFunctionArguments(argumentsNode);
+      let parsedArgs = args.args;
+      let children = args.children;
       //TODO: We may need a helper function to determine at runtime if size is a vector or a number. Center requires a vector
       const centerString = (center, size) => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
-      if (name === 'cube') {
-        let size = convertVector3(parsedArgs[0] || parsedArgs['size'] || '1');
-        let center = parsedArgs[1] || parsedArgs['center'];  
-        let centerStr = centerString(center, size);
-        result = `cuboid({size: ${size}${centerStr}})`
-      }
-      else if (name === 'linear_extrude') {
-        result = `extrudeLinear({height: ${parsedArgs[0] || parsedArgs['height']}}, ${children})`
-      }
-      else if (name === 'polygon') {
-        let points = parsedArgs[0] || parsedArgs['points'];
-        result = `polygonEnsureCounterclockwise({points: ${points}})`
-      }
-      else if (name === 'mirror') {
-        let normal = parsedArgs[0] || parsedArgs['v'];
-        result = `mirror({normal: ${normal}}, ${children})`
-      }
-      else if (name === 'rotate') {
-        let degrees = convertVector3(parsedArgs[0] || parsedArgs['a']);
-        let vector = parsedArgs['v'] || (parsedArgs.length > 2 ? parsedArgs[1] : '');
-        if (vector) throw new Error(`${node.text}: Rotate around vector is not yet implemented`)
-        result = `rotateDegrees(${degrees}, ${children})`
-      }
-      else if (name === 'difference') {
-        result = `subtract(${generateCode(node.child(1))})`
-      }
-      else if (name === 'cylinder') {
-        let h = parsedArgs[0] || parsedArgs['h'];
-        let r1 = parsedArgs[1] || parsedArgs['r'] || parsedArgs['r1']
-          || (parsedArgs['d'] && `${parsedArgs['d']} / 2`)
-          || (parsedArgs['d1'] && `${parsedArgs['d1']} / 2`)
-          || '1'
-        let r2 = parsedArgs[2] || parsedArgs['r2'] || (parsedArgs['d2'] && `${parsedArgs['d2']} / 2`);
-        let center = parsedArgs[3] || parsedArgs['center'] || 'false';
-        //TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
-        let centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`);
-        if (r2) {
-          result = `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})`
+
+      const openscadModules = {
+        cube: {
+          openscadParams: ['size', 'center'],
+          jscadCode: (params) => {
+            params.size = convertVector3(params.size || '1'); //Default
+            return `cuboid({size: ${params.size}${centerString(params.center, params.size)}})\n`
+          },
+        },
+        linear_extrude: {
+          openscadParams: ['height', 'v', 'center', 'convexity', 'twist', 'slices', 'scale', '$fn'],
+          jscadCode: (params, children) => {
+            return `extrudeLinear({height: ${params.height}}, ${children})`
+          }
+        },
+        polygon: {
+          openscadParams: ['points'],
+          jscadCode: (params) => {
+            return `polygonEnsureCounterclockwise({points: ${params.points}})`
+          }
+        },
+        mirror: {
+          openscadParams: ['v'],
+          jscadCode: (params, children) => {
+            return `mirror({normal: ${params.v}}, ${children})`
+          }
+        },
+        rotate: {
+          openscadParams: ['a', 'v'],
+          jscadCode: (params, children) => {
+            let degrees = convertVector3(params.a);
+            if (params.v) throw new Error(`Rotate around vector is not yet implemented`)
+            return `rotateDegrees(${degrees}, ${children})`
+          }
+        },
+        difference: {
+          openscadParams: [],
+          jscadCode: (params, children) => {
+            return `subtract(${children})`
+          }
+        },
+        cylinder: {
+          openscadParams: ['h', 'r1', 'r2', 'center'], //These are the only positional parameters, the others are named
+          jscadCode: (params) => {
+            let h = params.h || params['h'];
+            let r1 = params.r1 || params.r || (params.d && `${params.d} / 2`) || (params.d1 && `${params.d1} / 2`) || '1';
+            let r2 = params.r2 || (params.d2 && `${params.d2} / 2`);
+            let center = params.center || 'false';
+            //TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
+            let centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`);
+            if (r2) {
+              return `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})`;
+            } else {
+              return `cylinder({height: ${h}, radius: ${r1}${centerStr}})`;
+            }
+          }
         }
-        else {
-          result = `cylinder({height: ${h}, radius: ${r1}${centerStr}})`
+      }
+
+      let openScadModule = openscadModules[name];
+      if (openScadModule) {
+        let namedArgs = {};
+        // if parsedArgs[0] has a value, then it is indexed by position, otherwise it is indexed by name
+        if (parsedArgs[0]) {
+          // Convert positioned arguments to named arguments
+          for (let i = 0; i < parsedArgs.length; i++) {
+            namedArgs[openScadModule.openscadParams[i]] = parsedArgs[i];
+          }
+        } else {
+          namedArgs = parsedArgs;
         }
+        //Get the jscad value for each argumen
+        result = openScadModule.jscadCode(namedArgs, children);
       }
       else {
         let args = node.namedChildren.slice(1).map(generateCode).join(', ')
@@ -389,16 +420,18 @@ export const jscadSyntax = {
       let result
       startTransformChain()
       const child0 = node.namedChild(0)
+      //If the transform chain has no children (ie difference() { children })
       if (node.namedChildren.length === 1) {
         result = generateCode(child0)
       } else {
-        const child0Copy = customNodeCopy(node.namedChild(0))
-        const child1 = customNodeCopy(node.namedChild(1))
+        const moduleCallNodeCopy = customNodeCopy(node.namedChild(0)) //This is the module call
+        const moduleChildrenNodeCopy = customNodeCopy(node.namedChild(1)) //This is the children of the module call
+        moduleChildrenNodeCopy.isModuleChildren = true; //Mark this so we can identify it later
 
-        const moduleArgs = child0Copy.namedChild(1)
-        moduleArgs.namedChildren.push(child1)
-        moduleArgs.children.push(child1)
-        result = `${tabbed(generateCode(child0Copy))}`
+        const moduleArgs = moduleCallNodeCopy.namedChild(1)
+        moduleArgs.namedChildren.push(moduleChildrenNodeCopy)
+        moduleArgs.children.push(moduleChildrenNodeCopy)
+        result = `${tabbed(generateCode(moduleCallNodeCopy))}`
       }
       endTransformChain()
 
@@ -450,6 +483,7 @@ export const jscadSyntax = {
 function parseFunctionArguments(node) {
   const args = {};
   const positionalArgs = [];
+  let children = '';
   
   const childrenCount = node.namedChildren?.length;
 
@@ -461,12 +495,17 @@ function parseFunctionArguments(node) {
       const key = generateCode(child.namedChild(0));
       const value = generateCode(child.namedChild(1));
       args[key] = value;
-    } else {
+    } 
+    else if (child.isModuleChildren) { //This is our flag to indicate this node is the "children" of a module call (ie difference() { children })
+      children = generateCode(child);
+    }
+    else {
       args[i] = generateCode(child);
     }
   }
+  args.length = childrenCount;
   
-  return args;
+  return {args, children};
 }
 
 
