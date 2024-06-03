@@ -395,7 +395,7 @@ export const jscadSyntax = {
         result = dedent`
           inlineFor(${values}, (${variable}) => {
             ${body.trim()}\n
-          });\n`
+          })\n`
       // }
 
       return result;
