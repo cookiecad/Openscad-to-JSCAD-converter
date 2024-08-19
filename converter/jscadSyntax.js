@@ -2,7 +2,7 @@ import { generateFunctionCall, generateCode } from './codeGeneration.js'
 import { helperFunctions, out, scopes, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js';
 import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js';
 
-import generatedJscad from "./jscadSyntaxFromGrammar.json" assert { type: "json" }
+import generatedJscad from "./jscadSyntaxFromGrammar.js"
 import dedent from 'dedent';
 
 export const jscadSyntax = {

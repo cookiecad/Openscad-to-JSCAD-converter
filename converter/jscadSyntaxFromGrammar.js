@@ -1,4 +1,4 @@
-{
+export default {
   "source_file": {
     "open": "",
     "close": "",

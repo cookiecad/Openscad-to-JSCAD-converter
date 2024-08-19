@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "convert": "tsx cli.ts",
     "test": "mocha",
     "lint": "standard --fix",
     "update-grammar": "node jscadGrammarGenerator/execute.js"
@@ -22,6 +23,9 @@
     "tree-sitter-openscad": "^0.5.1"
   },
   "devDependencies": {
-    "mocha": "^10.4.0"
+    "@types/node": "^22.4.1",
+    "mocha": "^10.4.0",
+    "tsx": "^4.17.0",
+    "typescript": "^5.5.4"
   }
 }
