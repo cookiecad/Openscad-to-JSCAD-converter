@@ -1,10 +1,9 @@
 {
   "name": "openscad-to-jscad-converter",
-  "workspaces": [
-    "converter"
-  ],
   "scripts": {
-    "lint": "standard --fix --env mocha"
+    "lint": "standard --fix --env mocha",
+    "preinstall": "npx only-allow pnpm"
+
   },
   "devDependencies": {
     "standard": "^17.1.0"
