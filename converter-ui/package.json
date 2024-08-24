@@ -1,5 +1,5 @@
 {
-  "name": "openscad-to-jscad-ui",
+  "name": "converter-ui",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@nextui-org/react": "^2.4.6",
+    "@uiw/react-json-view": "2.0.0-alpha.26",
     "framer-motion": "^11.3.28",
     "next": "^14.2.5",
     "react": "^18",

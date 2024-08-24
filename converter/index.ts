@@ -1,36 +1,50 @@
 // @ts-check
 import fs from 'fs'
 import path from 'path'
-import Parser from 'tree-sitter'
+import Parser, {Tree, SyntaxNode} from 'tree-sitter'
 import OpenSCAD from 'tree-sitter-openscad'
 import * as prettier from 'prettier'
 import dedent from 'dedent'
 
 import { generateTreeCode } from './codeGeneration.js'
+export type { Tree, SyntaxNode }
 
 const parser = new Parser()
+try {
 parser.setLanguage(OpenSCAD)
+} catch (e) {
+  console.error('Failed to load Tree-Sitter language:', e);
+  throw e;
+}
 
 /**
  * Parses the given OpenSCAD code and generates JSCAD code.
  *
  */
-export async function parseOpenSCAD(code: string): Promise<string> {
-  const tree = parser.parse(code)
-
+export async function parseOpenSCAD(code: string) {
+  let jscadCode, tree;
+  try {
+   tree = parser.parse(code)
   // Traverse the syntax tree and generate JSCAD code
-  let jscadCode = generateTreeCode(tree.rootNode)
+    jscadCode = generateTreeCode(tree.rootNode)
+  }
+  catch (e) {
+    console.log('tree', code)
+    console.error('Error generating JSCAD code:', e);
+  }
   try {
     jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
   } catch (e) {
     console.log('Error formatting code, continuing without formatting', e)
   }
 
-  return jscadCode
+  return {jscadCode, tree}
 }
 
 export async function parseOpenSCADFormats(code: string, outputFolder: string) {
-  const jscadCode = await parseOpenSCAD(code)
+  const parseResult = await parseOpenSCAD(code)
+  const jscadCode = parseResult.jscadCode
+
 
   const outputJs = dedent`
   import jscad from '@jscad/modeling'
@@ -50,7 +64,8 @@ export async function parseOpenSCADFormats(code: string, outputFolder: string) {
   return {
     jscad: jscadCode,
     js: outputJs,
-    cadit: caditJs
+    cadit: caditJs,
+    tree: parseResult.tree,
   }
 }
 

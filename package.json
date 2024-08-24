@@ -1,5 +1,5 @@
 {
-  "name": "openscad-to-jscad-converter",
+  "name": "converter-ui",
   "scripts": {
     "lint": "standard --fix --env mocha",
     "preinstall": "npx only-allow pnpm"

@@ -1,24 +1,45 @@
 "use client"
 // Converter.tsx
 import { useState } from 'react';
-import { parseOpenSCAD } from './parse-util';
-import {Tabs, Tab, Card, CardBody} from "@nextui-org/react";
+import { parseOpenSCAD, printOpenSCADTree } from './parse-util';
+import { Tabs, Tab, Card, CardBody } from "@nextui-org/react";
+// import TreeSitterWrapper, { Tree } from './TreeSitterWrapper';
+import JsonViewer from './JsonViewer';
 
 export default function Converter() {
   const [code, setCode] = useState<string>('');
+  const [jscad, setJscad] = useState<string>('');
+  const [js, setJs] = useState<string>('');
+  const [openscadTree, setOpenscadTree] = useState<string>('');
+  const [cadit, setCadit] = useState<string>('');
+  const [tree, setTree] = useState<object | null>(null);
 
-  function handleConvert(): void {
+  async function handleConvert(): Promise<void> {
     if (!code) {
       return;
     }
 
-    parseOpenSCAD(code).then((result) => {
-      console.log(result);
-    });
+    try {
+      const result = await parseOpenSCAD(code);
+      // const openscadTree = await printOpenSCADTree(code);
+      console.log("result", result);
+      setJscad(result.jscad);
+      setJs(result.js);
+      let treeObj = JSON.parse(result.tree);
+      console.log('treeObj', treeObj);
+      setTree(treeObj);
+      setCadit(result.cadit);
+    } catch (error) {
+      console.error('Error parsing OpenSCAD:', error);
+      setJscad(`Error parsing OpenSCAD: ${error}`);
+      setJs(`Error parsing OpenSCAD: ${error}`);
+      setOpenscadTree(`Error parsing OpenSCAD: ${error}`);
+      setCadit(`Error parsing OpenSCAD: ${error}`);
+    }
   }
 
   return (
-    <div className='flex flex-col items-center w-full'>
+    <div className='flex flex-1 flex-col items-center w-full'>
       <textarea
         className='w-full h-64 p-4 mb-4 border border-gray-300 rounded max-w-5xl'
         placeholder='Enter OpenSCAD code...'
@@ -29,34 +50,54 @@ export default function Converter() {
         Convert
       </button>
       
-
-    <div className="flex w-full flex-col">
-      <Tabs aria-label="Options">
-        <Tab key="photos" title="Photos">
-          <Card>
-            <CardBody>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+      <div className="flex flex-1 w-full flex-col max-w-5xl">
+        <Tabs aria-label="Conversion Results">
+          <Tab key="jscad" title="JSCAD" className='flex flex-1'>
+          <Card className='flex flex-1'>
+            <CardBody className='flex flex-1'>
+                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
+                  value={jscad || 'JSCAD code will be displayed here after conversion'}
+                />
             </CardBody>
           </Card>  
         </Tab>
-        <Tab key="music" title="Music">
-          <Card>
-            <CardBody>
-              Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+          <Tab key="js" title="JavaScript" className='flex flex-1'>
+          <Card className='flex flex-1'>
+            <CardBody className='flex flex-1'>
+                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
+             value={js || 'JavaScript code will be displayed here after conversion'}
+            />
             </CardBody>
           </Card>  
         </Tab>
-        <Tab key="videos" title="Videos">
-          <Card>
-            <CardBody>
-              Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+          <Tab key="openscadTree" title="openscadTree" className='flex flex-1'>
+          <Card className='flex flex-1'>
+            <CardBody className='flex flex-1'>
+                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
+             value={openscadTree || 'openscadTree will be displayed here after conversion'}
+                />
+              </CardBody>
+            </Card>
+          </Tab>
+          <Tab key="cadit" title="CADIT" className='flex flex-1'>
+          <Card className='flex flex-1'>
+            <CardBody className='flex flex-1'>
+                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
+              value={cadit || 'CADIT code will be displayed here after conversion'}
+                />
+              </CardBody>
+            </Card>
+          </Tab>
+          <Tab key="treeSitter" title="Tree-Sitter" className='flex flex-1'>
+            <Card className='flex flex-1'>
+              <CardBody className='flex flex-1'>
+                {/* <TreeSitterWrapper tsDocument={tree} /> */}
+                <JsonViewer data={tree} />
             </CardBody>
           </Card>  
         </Tab>
       </Tabs>
     </div>  
-  );
-
     </div>
   );
 }
