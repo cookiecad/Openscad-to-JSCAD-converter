@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { translate } from './grammarToJscadSyntax.js';
-import openscadGrammar from "tree-sitter-openscad/src/grammar.json" assert { type: "json" }
+import openscadGrammar from "tree-sitter-openscad/src/grammar.json" with { type: "json" }
 
 try {
   const jscadSyntax = translate(openscadGrammar);

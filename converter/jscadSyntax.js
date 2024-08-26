@@ -265,19 +265,19 @@ export const jscadSyntax = {
         linear_extrude: {
           openscadParams: ['height', 'v', 'center', 'convexity', 'twist', 'slices', 'scale', '$fn'],
           jscadCode: (params, children) => {
-            return `extrudeLinear({height: ${params.height}}, ${children})`
+            return `extrudeLinear({height: ${params.height}}, ${children})\n`
           }
         },
         polygon: {
           openscadParams: ['points'],
           jscadCode: (params) => {
-            return `polygonEnsureCounterclockwise({points: ${params.points}})`
+            return `polygonEnsureCounterclockwise({points: ${params.points}})\n`
           }
         },
         mirror: {
           openscadParams: ['v'],
           jscadCode: (params, children) => {
-            return `mirror({normal: ${params.v}}, ${children})`
+            return `mirror({normal: ${params.v}}, ${children})\n`
           }
         },
         rotate: {
@@ -285,13 +285,13 @@ export const jscadSyntax = {
           jscadCode: (params, children) => {
             let degrees = convertVector3(params.a);
             if (params.v) throw new Error(`Rotate around vector is not yet implemented`)
-            return `rotateDegrees(${degrees}, ${children})`
+            return `rotateDegrees(${degrees}, ${children})\n`
           }
         },
         difference: {
           openscadParams: [],
           jscadCode: (params, children) => {
-            return `subtract(${children})`
+            return `subtract(${children})\n`
           }
         },
         cylinder: {
@@ -304,9 +304,9 @@ export const jscadSyntax = {
             //TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
             let centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`);
             if (r2) {
-              return `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})`;
+              return `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})\n`;
             } else {
-              return `cylinder({height: ${h}, radius: ${r1}${centerStr}})`;
+              return `cylinder({height: ${h}, radius: ${r1}${centerStr}})\n`;
             }
           }
         }
@@ -329,7 +329,7 @@ export const jscadSyntax = {
       }
       else {
         let args = node.namedChildren.slice(1).map(generateCode).join(', ')
-        result = `${name}(${args})`
+        result = `${name}(\n${tabbed(args)}\n)`
       }
       
       // if (moduleNames.includes(name)) { // If the module name is function in the file
@@ -436,7 +436,7 @@ export const jscadSyntax = {
       endTransformChain()
 
       if (!inTransformChain()) {
-        result = `jscadObjects.push(${result}\n)\n`
+        result = `jscadObjects.push(\n${result}\n)\n`
       }
 
       return result
@@ -454,7 +454,9 @@ export const jscadSyntax = {
       const consequence = generateCode(node.consequenceNode)
       if (useInlineIf) {
         popTransformChain()
-        return `\n...inlineIf(${condition}, (jscadObjects) => ${consequence}, (jscadObjects) => {return []}),`
+        return dedent`\n...inlineIf(${condition}, 
+          (jscadObjects) => ${consequence}, 
+          (jscadObjects) => {return []}),`
       } else {
         return `if (${condition}) {\n${tabbed(consequence)}\n}\n`
       }
