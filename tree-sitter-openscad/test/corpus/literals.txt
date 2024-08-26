@@ -1,0 +1,408 @@
+================================================================================
+All Literals
+================================================================================
+num = -4.3;
+name = "Karl";
+boolean = true;
+list = [1, 2, each [3, 4], [5, 6]];
+trailing_comma_list = [[1, 2,],];
+range = [1:num:-10];
+fn = function(x, y) x + y;
+comprehension = [for (x = 0; x < 5; x = x + 2) 12];
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    (identifier)
+    (float))
+  (assignment
+    (identifier)
+    (string))
+  (assignment
+    (identifier)
+    (boolean))
+  (assignment
+    (identifier)
+    (list
+      (decimal)
+      (decimal)
+      (each
+        (list
+          (decimal)
+          (decimal)))
+      (list
+        (decimal)
+        (decimal))))
+  (assignment
+    (identifier)
+    (list
+      (list
+        (decimal)
+        (decimal))))
+  (assignment
+    (identifier)
+    (range
+      (decimal)
+      (identifier)
+      (decimal)))
+  (assignment
+    (identifier)
+    (function
+      (parameters_declaration
+        (parameter
+          (identifier))
+        (parameter
+          (identifier)))
+      (binary_expression
+        (identifier)
+        (identifier))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (condition_update_clause
+            (assignment
+              (identifier)
+              (decimal))
+            (binary_expression
+              (identifier)
+              (decimal))
+            (assignment
+              (identifier)
+              (binary_expression
+                (identifier)
+                (decimal))))
+          (decimal))))))
+
+================================================================================
+Comprehensions
+================================================================================
+conditionless = [for (x = [1:10]) x];
+conditioned = [for (x = [1:10]) if ($preview) x];
+ifelse = [for (x = [1:10]) if ($preview) x else ln(x)];
+if_for_ifelse = [for (x = 0) if (x < 0) for (y = 2) if (y == 2) y else x];
+complex_condition = [
+    for (x = [1:10]) if (x % 2 == 0) x else if (x < 5) x - 1 else 0
+];
+spliced = [for (x = [1:10]) x, for (y = [1, 2, 3]) y, for (z = [4, 5, 6]) z];
+nested = [for (x = [1:10]) for (y = [1, 2, 3]) for (z = [4, 5, 6]) x * y * z];
+grouped = [if (x < 7) (for (y = [1:10]) if (y > x) y) else x];
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (identifier)))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (list_comprehension
+            (if_clause
+              (parenthesized_expression
+                (special_variable
+                  (identifier)))
+              (identifier)))))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (list_comprehension
+            (if_clause
+              (parenthesized_expression
+                (special_variable
+                  (identifier)))
+              (identifier)
+              (function_call
+                (identifier)
+                (arguments
+                  (identifier)))))))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (decimal)))
+          (list_comprehension
+            (if_clause
+              (parenthesized_expression
+                (binary_expression
+                  (identifier)
+                  (decimal)))
+              (list_comprehension
+                (for_clause
+                  (parenthesized_assignments
+                    (assignment
+                      (identifier)
+                      (decimal)))
+                  (list_comprehension
+                    (if_clause
+                      (parenthesized_expression
+                        (binary_expression
+                          (identifier)
+                          (decimal)))
+                      (identifier)
+                      (identifier)))))))))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (list_comprehension
+            (if_clause
+              (parenthesized_expression
+                (binary_expression
+                  (binary_expression
+                    (identifier)
+                    (decimal))
+                  (decimal)))
+              (identifier)
+              (list_comprehension
+                (if_clause
+                  (parenthesized_expression
+                    (binary_expression
+                      (identifier)
+                      (decimal)))
+                  (binary_expression
+                    (identifier)
+                    (decimal))
+                  (decimal)))))))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (identifier)))
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (list
+                (decimal)
+                (decimal)
+                (decimal))))
+          (identifier)))
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (list
+                (decimal)
+                (decimal)
+                (decimal))))
+          (identifier)))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (for_clause
+          (parenthesized_assignments
+            (assignment
+              (identifier)
+              (range
+                (decimal)
+                (decimal))))
+          (list_comprehension
+            (for_clause
+              (parenthesized_assignments
+                (assignment
+                  (identifier)
+                  (list
+                    (decimal)
+                    (decimal)
+                    (decimal))))
+              (list_comprehension
+                (for_clause
+                  (parenthesized_assignments
+                    (assignment
+                      (identifier)
+                      (list
+                        (decimal)
+                        (decimal)
+                        (decimal))))
+                  (binary_expression
+                    (binary_expression
+                      (identifier)
+                      (identifier))
+                    (identifier))))))))))
+  (assignment
+    (identifier)
+    (list
+      (list_comprehension
+        (if_clause
+          (parenthesized_expression
+            (binary_expression
+              (identifier)
+              (decimal)))
+          (list_comprehension
+            (for_clause
+              (parenthesized_assignments
+                (assignment
+                  (identifier)
+                  (range
+                    (decimal)
+                    (decimal))))
+              (list_comprehension
+                (if_clause
+                  (parenthesized_expression
+                    (binary_expression
+                      (identifier)
+                      (identifier)))
+                  (identifier)))))
+          (identifier))))))
+
+================================================================================
+Numbers
+================================================================================
+i = 5;
+f  = -0.0;
+ie = 10e10;
+full = -2.3e-4;
+negative_int = -6;
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    (identifier)
+    (decimal))
+  (assignment
+    (identifier)
+    (float))
+  (assignment
+    (identifier)
+    (float))
+  (assignment
+    (identifier)
+    (float))
+  (assignment
+    (identifier)
+    (decimal)))
+
+================================================================================
+Each Expansion
+================================================================================
+a = [1, 2, 3];
+list = [1, 2, each a, each ([3, 4]), each 5, each for (x = [1:10]) x];
+str_list = [each false, each [1:2], each undef, each "hello"];
+fn_list = [each function() 10];
+each_if = [each if (len(a) < 5) 10 else 15, each if (len(str_list) < 5) true];
+--------------------------------------------------------------------------------
+
+(source_file
+  (assignment
+    (identifier)
+    (list
+      (decimal)
+      (decimal)
+      (decimal)))
+  (assignment
+    (identifier)
+    (list
+      (decimal)
+      (decimal)
+      (each
+        (identifier))
+      (each
+        (parenthesized_expression
+          (list
+            (decimal)
+            (decimal))))
+      (each
+        (decimal))
+      (each
+        (list_comprehension
+          (for_clause
+            (parenthesized_assignments
+              (assignment
+                (identifier)
+                (range
+                  (decimal)
+                  (decimal))))
+            (identifier))))))
+  (assignment
+    (identifier)
+    (list
+      (each
+        (boolean))
+      (each
+        (range
+          (decimal)
+          (decimal)))
+      (each
+        (undef))
+      (each
+        (string))))
+  (assignment
+    (identifier)
+    (list
+      (each
+        (function
+          (parameters_declaration)
+          (decimal)))))
+  (assignment
+    (identifier)
+    (list
+      (each
+        (list_comprehension
+          (if_clause
+            (parenthesized_expression
+              (binary_expression
+                (function_call
+                  (identifier)
+                  (arguments
+                    (identifier)))
+                (decimal)))
+            (decimal)
+            (decimal))))
+      (each
+        (list_comprehension
+          (if_clause
+            (parenthesized_expression
+              (binary_expression
+                (function_call
+                  (identifier)
+                  (arguments
+                    (identifier)))
+                (decimal)))
+            (boolean)))))))

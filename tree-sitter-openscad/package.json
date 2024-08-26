@@ -1,0 +1,43 @@
+{
+  "name": "tree-sitter-openscad",
+  "version": "0.5.1",
+  "description": "OpenSCAD grammar for tree-sitter",
+  "main": "bindings/node",
+  "keywords": [
+    "parser",
+    "lexer",
+    "openscad"
+  ],
+  "author": "Ian Boll <mainbollian@gmail.com>",
+  "contributors": [
+    "amaanq (Amaan Qureshi) <amaanq12@gmail.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bollian/tree-sitter-openscad/issues"
+  },
+  "dependencies": {
+    "nan": "^2.14.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.32.0",
+    "eslint-config-google": "^0.14.0",
+    "tree-sitter-cli": "^0.20",
+    "tree-sitter": "^0.20"
+  },
+  "repository": "https://github.com/bollian/tree-sitter-openscad",
+  "scripts": {
+    "build": "tree-sitter generate && node-gyp build",
+    "test": "tree-sitter test && node --test",
+    "parse": "tree-sitter parse",
+    "test-windows": "tree-sitter test"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.openscad",
+      "file-types": [
+        "scad"
+      ]
+    }
+  ]
+}
