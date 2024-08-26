@@ -4,6 +4,7 @@ import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js';
 
 import generatedJscad from "./jscadSyntaxFromGrammar.js"
 import dedent from 'dedent';
+import { mainModule } from 'process';
 
 export const jscadSyntax = {
   ...generatedJscad,
@@ -315,15 +316,21 @@ export const jscadSyntax = {
       let openScadModule = openscadModules[name];
       if (openScadModule) {
         let namedArgs = {};
-        // if parsedArgs[0] has a value, then it is indexed by position, otherwise it is indexed by name
-        if (parsedArgs[0]) {
-          // Convert positioned arguments to named arguments
-          for (let i = 0; i < parsedArgs.length; i++) {
-            namedArgs[openScadModule.openscadParams[i]] = parsedArgs[i];
+        // Args can be positional or named (once an argument is named, all following arguments must be named)
+        for (let i = 0; i < parsedArgs.length; i++) {
+          let namedArg, value;
+          if (parsedArgs[i] !== undefined) { //if parsedArgs[i] is undefined, it's a named argument
+            // Convert positioned arguments to named arguments
+            namedArg = openScadModule.openscadParams[i];
+            value = parsedArgs[i];
           }
-        } else {
-          namedArgs = parsedArgs;
+          else {
+            namedArg = Object.keys(parsedArgs)[i];
+            value = parsedArgs[namedArg];
+          }
+          namedArgs[namedArg] = value;
         }
+
         //Get the jscad value for each argumen
         result = openScadModule.jscadCode(namedArgs, children);
       }
@@ -452,13 +459,16 @@ export const jscadSyntax = {
       }
       const condition = generateCode(node.conditionNode)
       const consequence = generateCode(node.consequenceNode)
+      const alternative = node.namedChildren[2] && generateCode(node.namedChildren[2]); 
+      //node.alternativeNodes?.length > 0 && generateCode(node.alternativeNodes[1])
       if (useInlineIf) {
         popTransformChain()
         return dedent`\n...inlineIf(${condition}, 
           (jscadObjects) => ${consequence}, 
-          (jscadObjects) => {return []}),`
+          ${alternative ? `(jscadObjects) => ${alternative})` : '()=>[]),'}`
       } else {
-        return `if (${condition}) {\n${tabbed(consequence)}\n}\n`
+        return dedent`if (${condition}) {\n${tabbed(consequence)}\n}\n
+        ${alternative ? `else {\n${tabbed(alternative)}\n}\n` : ''}`
       }
     }
   },

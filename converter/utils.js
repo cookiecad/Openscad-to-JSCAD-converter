@@ -38,8 +38,9 @@ export const helperFunctions = [
   dedent`
   function inlineIf(condition, ifTrue, ifFalse) {
     let jscadObjects = [];
-    if (condition) return ifTrue(jscadObjects)
-    else return ifFalse(jscadObjects)
+    if (condition) ifTrue(jscadObjects)
+    else ifFalse(jscadObjects)
+    return jscadObjects;
   }`,
   // dedent`
   // function inlineFor(init, test, increment, body) {
