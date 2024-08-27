@@ -16,8 +16,9 @@ function getModuleNames(node) {
 }
 
 export function generateTreeCode(node) {
-  moduleNames = getModuleNames(node);
-  return generateCode(node);
+  moduleNames = getModuleNames(node)
+  const code = generateCode(node)
+  return { code, node }
 }
 
 export function generateCode(node) {
@@ -64,6 +65,7 @@ export function generateCode(node) {
       result = node.text;
     }
 
+    node.jscadCode = result;
     return result;
   } catch (error) {
     if (error.node) {

@@ -23,6 +23,7 @@ export default function Converter() {
       const result = await parseOpenSCAD(code);
       // const openscadTree = await printOpenSCADTree(code);
       console.log("result", result);
+      if (!result.jscad || !result.tree) { throw new Error('Failed to parse OpenSCAD code'); }
       setJscad(result.jscad);
       setJs(result.js);
       let treeObj = JSON.parse(result.tree);

@@ -7,14 +7,25 @@ import * as prettier from 'prettier'
 import dedent from 'dedent'
 
 import { generateTreeCode } from './codeGeneration.js'
-export type { Tree, SyntaxNode }
 
-const parser = new Parser()
-try {
-parser.setLanguage(OpenSCAD)
-} catch (e) {
-  console.error('Failed to load Tree-Sitter language:', e);
-  throw e;
+type JscadSyntaxNode = SyntaxNode & {jscadCode?: string}
+export type { Tree, JscadSyntaxNode}
+
+
+let parser: Parser;
+
+async function init() {
+  if (parser) return;
+  // await Parser.init()
+  parser = new Parser()
+  try {
+    console.log('Loading Tree-Sitter language...', OpenSCAD)
+    //await parser.setLanguage(OpenSCAD)
+    parser.setLanguage(OpenSCAD)
+    } catch (e) {
+      console.error('Failed to load Tree-Sitter language:', e);
+      throw `Failed to load Tree-Sitter language ${e}`;
+    }    
 }
 
 /**
@@ -22,26 +33,29 @@ parser.setLanguage(OpenSCAD)
  *
  */
 export async function parseOpenSCAD(code: string) {
-  let jscadCode, tree;
+  await init()
+  let jscadCode, tree, newRootNode;
   try {
-   tree = parser.parse(code)
+   tree = parser.parse(code);
+
   // Traverse the syntax tree and generate JSCAD code
-    jscadCode = generateTreeCode(tree.rootNode)
+    ({ code: jscadCode, node: newRootNode } = generateTreeCode(tree.rootNode))
   }
   catch (e) {
     console.log('tree', code)
     console.error('Error generating JSCAD code:', e);
   }
   try {
-    jscadCode = await prettier.format(jscadCode, { parser: 'babel' })
+    jscadCode = await prettier.format(jscadCode!, { parser: 'babel' })
   } catch (e) {
     console.log('Error formatting code, continuing without formatting', e)
   }
 
-  return {jscadCode, tree}
+  return {jscadCode, rootNode: newRootNode}
 }
 
 export async function parseOpenSCADFormats(code: string, outputFolder: string) {
+  await init()
   const parseResult = await parseOpenSCAD(code)
   const jscadCode = parseResult.jscadCode
 
@@ -65,7 +79,7 @@ export async function parseOpenSCADFormats(code: string, outputFolder: string) {
     jscad: jscadCode,
     js: outputJs,
     cadit: caditJs,
-    tree: parseResult.tree,
+    tree: parseResult.rootNode,
   }
 }
 

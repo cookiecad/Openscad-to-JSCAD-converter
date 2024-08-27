@@ -18,14 +18,15 @@ export interface SerializedNode {
   endPosition: any;   // Replace 'any' with the actual type if known
   childCount: number;
   children: SerializedNode[];
+  jscadCode?: string;
 }
-function serializeTree(tree: converter.Tree ) {
-  const rootNode = tree.rootNode;
+function serializeTree(rootNode: converter.JscadSyntaxNode ) {
   
-  function serializeNode(node: converter.SyntaxNode) {
+  function serializeNode(node: converter.JscadSyntaxNode) {
     const serializedNode: SerializedNode = {
       type: node.type,
       text: node.text.slice(0, 50),
+      jscadCode: node.jscadCode?.slice(0, 50),
       startPosition: node.startPosition,
       endPosition: node.endPosition,
       childCount: node.childCount,

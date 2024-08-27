@@ -43,7 +43,6 @@ export const jscadSyntax = {
     open: '', // comment already includes the "//"
     close: '\n',
     children: [],
-    text: 'text'
   },
   list: {
     open: '[',
@@ -52,25 +51,18 @@ export const jscadSyntax = {
     separator: ', '
   },
   identifier: {
-    text: 'text'
   },
   number: {
-    text: 'text'
   },
   boolean: {
-    text: 'text'
   },
   ';': {
-    text: 'text'
   },
   '[': {
-    text: 'text'
   },
   ']': {
-    text: 'text'
   },
   ':': {
-    text: 'text'
   },
   unary_expression: {
     open: '',
@@ -92,7 +84,6 @@ export const jscadSyntax = {
     separator: ' '
   },
   operator: {
-    text: 'text'
   },
   function_call: {
     generator: generateFunctionCall
@@ -489,6 +480,9 @@ export const jscadSyntax = {
       // }
       return ''
     }
+  },
+  modifier: {
+    generator: () => '' // remove modifiers
   }
 }
 
