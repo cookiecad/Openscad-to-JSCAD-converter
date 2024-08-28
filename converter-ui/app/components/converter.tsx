@@ -23,6 +23,9 @@ export default function Converter() {
       const result = await parseOpenSCAD(code);
       // const openscadTree = await printOpenSCADTree(code);
       console.log("result", result);
+      if (result.error) {
+        throw result.error;
+      }
       if (!result.jscad || !result.tree) { throw new Error('Failed to parse OpenSCAD code'); }
       setJscad(result.jscad);
       setJs(result.js);
@@ -30,12 +33,18 @@ export default function Converter() {
       console.log('treeObj', treeObj);
       setTree(treeObj);
       setCadit(result.cadit);
-    } catch (error) {
-      console.error('Error parsing OpenSCAD:', error);
-      setJscad(`Error parsing OpenSCAD: ${error}`);
-      setJs(`Error parsing OpenSCAD: ${error}`);
-      setOpenscadTree(`Error parsing OpenSCAD: ${error}`);
-      setCadit(`Error parsing OpenSCAD: ${error}`);
+    } catch (error: any) {
+      console.error(error);
+      let message = `Error: ${error.message}`
+      setJscad(message);
+      setJs(message);
+      setOpenscadTree(message);
+      setCadit(message);
+
+      if (error.data && error.data.tree) {
+        let treeObj = JSON.parse(error.data.tree);
+        setTree(treeObj);
+      }
     }
   }
 

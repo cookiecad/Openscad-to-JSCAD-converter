@@ -72,6 +72,9 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      react-json-view-lite:
+        specifier: ^1.4.0
+        version: 1.4.0(react@18.3.1)
     devDependencies:
       '@types/node':
         specifier: ^22.5.0
@@ -3247,6 +3250,12 @@ packages:
 
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
+
+  react-json-view-lite@1.4.0:
+    resolution: {integrity: sha512-wh6F6uJyYAmQ4fK0e8dSQMEWuvTs2Wr3el3sLD9bambX1+pSWUVXIz1RFaoy3TI1mZ0FqdpKq9YgbgTTgyrmXA==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      react: ^16.13.1 || ^17.0.0 || ^18.0.0
 
   react-remove-scroll-bar@2.3.6:
     resolution: {integrity: sha512-DtSYaao4mBmX+HDo5YWYdBWQwYIQQshUV/dVxFxK+KM26Wjwp1gZ6rv6OC3oujI6Bfu6Xyg3TwK533AQutsn/g==}
@@ -8070,6 +8079,10 @@ snapshots:
       scheduler: 0.23.2
 
   react-is@16.13.1: {}
+
+  react-json-view-lite@1.4.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   react-remove-scroll-bar@2.3.6(@types/react@18.3.4)(react@18.3.1):
     dependencies:

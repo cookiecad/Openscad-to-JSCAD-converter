@@ -35,15 +35,23 @@ async function init() {
 export async function parseOpenSCAD(code: string) {
   await init()
   let jscadCode, tree, newRootNode;
+  tree = parser.parse(code);
+  
   try {
-   tree = parser.parse(code);
-
-  // Traverse the syntax tree and generate JSCAD code
+    // Traverse the syntax tree and generate JSCAD code
     ({ code: jscadCode, node: newRootNode } = generateTreeCode(tree.rootNode))
   }
-  catch (e) {
+  catch (e: any) {
     console.log('tree', code)
     console.error('Error generating JSCAD code:', e);
+    if (e instanceof Error) {
+      e.message = `Error generating JSCAD code: ${e.message}`;
+    }
+    else {
+      e = new Error(`Error generating JSCAD code: ${e}`);
+    }
+    Object.assign(e, { data: { tree } });
+    throw e;
   }
   try {
     jscadCode = await prettier.format(jscadCode!, { parser: 'babel' })

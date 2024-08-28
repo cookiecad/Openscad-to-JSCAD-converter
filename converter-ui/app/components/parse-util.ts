@@ -6,8 +6,17 @@ export const printOpenSCADTree = async (code: string) => converter.printOpenSCAD
 
 export async function parseOpenSCAD(code: string) {
   // let { parseOpenSCADFormats } = await import('converter')
-
-  let result = await parseOpenSCADFormats(code, '')
+  let result;
+  try {
+    result = await parseOpenSCADFormats(code, '')
+  } catch (e) {
+    return { error: {
+      message: e.message,
+      data: {
+        tree: serializeTree(e.data.tree.rootNode), 
+        }
+    } };
+  }
   return {...result, tree: result.tree && serializeTree(result.tree)}
 }
 

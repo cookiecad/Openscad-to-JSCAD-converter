@@ -79,7 +79,9 @@ export function generateCode(node) {
       out('red', 'Grammar rule: ');
       console.log(`${JSON.stringify(rule)}`);
     }
-    throw error;
+    error.message = `Error in generateCode: ${error.message}\n node type: ${node.type}, text: ${node.text}
+    grammar rule: ${JSON.stringify(rule)}`
+    throw error
   }
 }
 
