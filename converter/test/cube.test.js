@@ -20,7 +20,7 @@ const parseSCAD = (scadcode, dump = false) => {
   const tree = parser.parse(scadcode)
 
   // Traverse the syntax tree and generate JSCAD code
-  const jscadcode = generateTreeCode(tree.rootNode)
+  const jscadcode = generateTreeCode(tree.rootNode).code;
   if (dump) {
     console.log('==================================================')
     console.log(dumpNode(tree.rootNode, 0))

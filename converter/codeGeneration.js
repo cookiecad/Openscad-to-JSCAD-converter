@@ -1,6 +1,6 @@
 //@ts-check
 import { jscadSyntax } from './jscadSyntax.js';
-import grammar from "tree-sitter-openscad/src/grammar.json"
+import grammar from "tree-sitter-openscad/src/grammar.json" with { type: "json" }
 
 import { out } from './utils.js';
 
