@@ -445,7 +445,7 @@ export const jscadSyntax = {
       let useInlineIf = false
       // If we are in middle of a transform chain, we need to use inlineIf and create a new transformchain
       if (inTransformChain()) {
-        pushTransformChain()
+        //pushTransformChain()
         useInlineIf = true
       }
       const condition = generateCode(node.conditionNode)
@@ -453,7 +453,7 @@ export const jscadSyntax = {
       const alternative = node.namedChildren[2] && generateCode(node.namedChildren[2]); 
       //node.alternativeNodes?.length > 0 && generateCode(node.alternativeNodes[1])
       if (useInlineIf) {
-        popTransformChain()
+        //popTransformChain()
         return dedent`\n...inlineIf(${condition}, 
           (jscadObjects) => ${consequence}, 
           ${alternative ? `(jscadObjects) => ${alternative})` : '()=>[]),'}`
