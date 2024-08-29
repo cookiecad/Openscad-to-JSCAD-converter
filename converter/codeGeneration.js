@@ -119,7 +119,11 @@ export function generateFunctionCall (node) {
       min: 'Math.min',
       max: 'Math.max',
       random: 'Math.random',
-      sqrt: 'Math.sqrt'
+      sqrt: 'Math.sqrt',
+      PI: 'Math.PI',
+      atan2: 'Math.atan2',
+      round: 'Math.round',
+
       // Add more mappings here
     }
     const mappedName = mapping[functionName] || functionName

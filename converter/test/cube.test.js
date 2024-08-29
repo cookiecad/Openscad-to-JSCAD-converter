@@ -43,3 +43,16 @@ describe('cube() conversion', function () {
     })
   })
 })
+
+describe('function() conversion', function () {
+  const filepath = path.resolve('./test', 'function.scad')
+  const scadcode = fs.readFileSync(filepath, 'UTF8')
+
+  const jscadcode = parseSCAD(scadcode, false)
+
+  describe('parseSCAD()', function () {
+    it('should convert functions with appropriate options', function () {
+      assert.equal(countOf('cuboid(', jscadcode), 1)
+    })
+  })
+})
