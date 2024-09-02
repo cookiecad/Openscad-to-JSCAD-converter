@@ -6,7 +6,7 @@ import OpenSCAD from 'tree-sitter-openscad'
 import * as prettier from 'prettier'
 import dedent from 'dedent'
 
-import { generateTreeCode } from './codeGeneration.js'
+import { generateTreeCode } from './codeGeneration'
 
 type JscadSyntaxNode = SyntaxNode & {jscadCode?: string}
 export type { Tree, JscadSyntaxNode}
@@ -30,16 +30,17 @@ async function init() {
 
 /**
  * Parses the given OpenSCAD code and generates JSCAD code.
- *
  */
-export async function parseOpenSCAD(code: string) {
+export async function parseOpenSCAD(options: {code: string, language: 'jscad' | 'manifold'}) {
+
   await init()
-  let jscadCode, tree, newRootNode;
+  let { code, language } = options;
+  let outputCode, tree, newRootNode, formats;
   tree = parser.parse(code);
   
   try {
     // Traverse the syntax tree and generate JSCAD code
-    ({ code: jscadCode, node: newRootNode } = generateTreeCode(tree.rootNode))
+    ({ code: outputCode, formats, node: newRootNode } = generateTreeCode(tree.rootNode, language));
   }
   catch (e: any) {
     console.log('tree', code)
@@ -54,42 +55,17 @@ export async function parseOpenSCAD(code: string) {
     throw e;
   }
   try {
-    jscadCode = await prettier.format(jscadCode!, { parser: 'babel' })
+    outputCode = await prettier.format(outputCode!, { parser: 'babel' })
   } catch (e) {
     console.log('Error formatting code, continuing without formatting', e)
   }
 
-  return {jscadCode, rootNode: newRootNode}
+  let result = {outputCode, formats, rootNode: newRootNode}
+  console.log('result', result)
+  return result;
+
 }
 
-export async function parseOpenSCADFormats(code: string, outputFolder: string) {
-  await init()
-  const parseResult = await parseOpenSCAD(code)
-  const jscadCode = parseResult.jscadCode
-
-
-  const outputJs = dedent`
-  import jscad from '@jscad/modeling'
-  export function main() {
-    ${jscadCode}
-  }
-  `
-
-  const caditJs = dedent`
-  function main() {
-    ${jscadCode}
-  }
-  let result = jscad.booleans.union(main());
-  console.log(result);
-`
-
-  return {
-    jscad: jscadCode,
-    js: outputJs,
-    cadit: caditJs,
-    tree: parseResult.rootNode,
-  }
-}
 
 export function printOpenSCADTree(code: string) {
   const tree = parser.parse(code)

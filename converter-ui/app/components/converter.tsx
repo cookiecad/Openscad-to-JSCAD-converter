@@ -2,44 +2,42 @@
 // Converter.tsx
 import { useState } from 'react';
 import { parseOpenSCAD, printOpenSCADTree } from './parse-util';
-import { Tabs, Tab, Card, CardBody } from "@nextui-org/react";
+import { Tabs, Tab, Card, CardBody, RadioGroup, Radio } from "@nextui-org/react";
 // import TreeSitterWrapper, { Tree } from './TreeSitterWrapper';
 import JsonViewer from './JsonViewer';
 
 export default function Converter() {
-  const [code, setCode] = useState<string>('');
-  const [jscad, setJscad] = useState<string>('');
-  const [js, setJs] = useState<string>('');
+  const [openscadCode, setOpenscadCode] = useState<string>('');
+  const [outputCodeFormats, setOutputCodeFormats] = useState<{[key: string]: string}>({});
   const [openscadTree, setOpenscadTree] = useState<string>('');
-  const [cadit, setCadit] = useState<string>('');
   const [tree, setTree] = useState<object | null>(null);
+  const [selected, setSelected] = useState<string>('jscad');
 
   async function handleConvert(): Promise<void> {
-    if (!code) {
+    if (!openscadCode) {
       return;
     }
 
     try {
-      const result = await parseOpenSCAD(code);
-      // const openscadTree = await printOpenSCADTree(code);
+      let language: 'jscad' | 'manifold' = selected === 'jscad' ? 'jscad' : 'manifold';
+      const result = await parseOpenSCAD(openscadCode, language);
+      // const openscadTree = await printOpenSCADTree(openscadCode);
       console.log("result", result);
       if (result.error) {
         throw result.error;
       }
-      if (!result.jscad || !result.tree) { throw new Error('Failed to parse OpenSCAD code'); }
-      setJscad(result.jscad);
-      setJs(result.js);
-      let treeObj = JSON.parse(result.tree);
+      if (!result.outputCode || !result.rootNode) { throw new Error('Failed to parse OpenSCAD code'); }
+      setOutputCodeFormats(result.formats);
+      let treeObj = JSON.parse(result.rootNode);
       console.log('treeObj', treeObj);
       setTree(treeObj);
-      setCadit(result.cadit);
     } catch (error: any) {
       console.error(error);
       let message = `Error: ${error.message}`
-      setJscad(message);
-      setJs(message);
+      setOutputCodeFormats({
+        "Error": message
+      });
       setOpenscadTree(message);
-      setCadit(message);
 
       if (error.data && error.data.tree) {
         let treeObj = JSON.parse(error.data.tree);
@@ -53,47 +51,42 @@ export default function Converter() {
       <textarea
         className='w-full h-64 p-4 mb-4 border border-gray-300 rounded max-w-5xl'
         placeholder='Enter OpenSCAD code...'
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
+        value={openscadCode}
+        onChange={(e) => setOpenscadCode(e.target.value)}
       />
+    <div className="flex flex-col gap-3">
+      <RadioGroup
+        label="Language"
+        value={selected}
+        onValueChange={setSelected}
+      >
+        <Radio value="jscad">JScad</Radio>
+        <Radio value="manifold">Manifold</Radio>
+      </RadioGroup>
+      <p className="text-default-500 text-small">Selected: {selected}</p>
+    </div>      
       <button className='px-4 py-2 text-white bg-blue-500 rounded' onClick={handleConvert}>
         Convert
       </button>
       
       <div className="flex flex-1 w-full flex-col max-w-5xl">
         <Tabs aria-label="Conversion Results">
-          <Tab key="jscad" title="JSCAD" className='flex flex-1'>
-          <Card className='flex flex-1'>
-            <CardBody className='flex flex-1'>
-                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
-                  value={jscad || 'JSCAD code will be displayed here after conversion'}
-                />
-            </CardBody>
-          </Card>  
-        </Tab>
-          <Tab key="js" title="JavaScript" className='flex flex-1'>
-          <Card className='flex flex-1'>
-            <CardBody className='flex flex-1'>
-                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
-             value={js || 'JavaScript code will be displayed here after conversion'}
-            />
-            </CardBody>
-          </Card>  
-        </Tab>
+          {Object.keys(outputCodeFormats).map((key) => (
+            <Tab key={key} title={key} className='flex flex-1'>
+              <Card className='flex flex-1'>
+                <CardBody className='flex flex-1'>
+                  <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
+                    value={outputCodeFormats[key]}
+                  />
+                </CardBody>
+              </Card>
+            </Tab>
+          ))}
           <Tab key="openscadTree" title="openscadTree" className='flex flex-1'>
           <Card className='flex flex-1'>
             <CardBody className='flex flex-1'>
                 <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
              value={openscadTree || 'openscadTree will be displayed here after conversion'}
-                />
-              </CardBody>
-            </Card>
-          </Tab>
-          <Tab key="cadit" title="CADIT" className='flex flex-1'>
-          <Card className='flex flex-1'>
-            <CardBody className='flex flex-1'>
-                <textarea className="flex flex-1 whitespace-pre-wrap overflow-auto" readOnly={true}
-              value={cadit || 'CADIT code will be displayed here after conversion'}
                 />
               </CardBody>
             </Card>

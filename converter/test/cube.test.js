@@ -5,7 +5,7 @@ import path from 'path'
 
 import Parser from 'tree-sitter'
 
-import { generateTreeCode } from '../codeGeneration.js'
+import { generateTreeCode } from '../codeGeneration'
 import { dumpNode } from '../nodeHelpers.js'
 import OpenSCAD from 'tree-sitter-openscad'
 

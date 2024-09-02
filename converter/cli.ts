@@ -1,7 +1,7 @@
 // @ts-check
 import fs from 'fs'
 import path from 'path'
-import { parseOpenSCAD, parseOpenSCADFormats, printOpenSCADTree } from './index.js'
+import { parseOpenSCAD, printOpenSCADTree } from './index.js'
 import dedent from 'dedent'
 
 // Read the OpenSCAD file
@@ -20,21 +20,19 @@ if (!fs.existsSync(outputFolder)) {
 const code = fs.readFileSync(filename, 'utf8')
 
 // Parse the OpenSCAD code and generate formats
-parseOpenSCAD(code)
-  .then(async jscadCode => {
+parseOpenSCAD({code, language: 'jscad'})
+  .then(async result => {
     console.log('JSCAD code ---------------:')
-    console.log(jscadCode)
-
-    const formats = await parseOpenSCADFormats(code, outputFolder)
+    console.log(result.outputCode)
 
     // Write the output JSCAD code and formats to files
     const outputJscadFilename = path.join(outputFolder, 'output.jscad')
     const outputJsFilename = path.join(outputFolder, 'output.js')
     const outputCaditJsFilename = path.join(outputFolder, 'output-cadit.js')
 
-    fs.writeFileSync(outputJscadFilename, formats.jscad)
-    fs.writeFileSync(outputJsFilename, formats.js)
-    fs.writeFileSync(outputCaditJsFilename, formats.cadit)
+    fs.writeFileSync(outputJscadFilename, result.formats.jscadCode)
+    fs.writeFileSync(outputJsFilename, result.formats.jsCode)
+    fs.writeFileSync(outputCaditJsFilename, result.formats.caditCode)
   })
   .catch(error => {
     console.error('Failed to parse OpenSCAD code:', error)

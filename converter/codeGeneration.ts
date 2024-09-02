@@ -1,28 +1,29 @@
 //@ts-check
-import { jscadSyntax } from './jscadSyntax.js';
+import { jscadSyntax, getCodeFormats as getCodeFormatsJscad } from './jscadSyntax';
+import { manifoldSyntax, getCodeFormats as getCodeFormatsJManifold } from './manifoldSyntax';
 import grammar from "tree-sitter-openscad/src/grammar.json" with { type: "json" }
 
 import { out } from './utils.js';
+import { SyntaxNode } from './types';
 
-export let moduleNames;
+let syntax: typeof jscadSyntax | typeof manifoldSyntax;
 
-// Function to find module names
-function getModuleNames(node) {
-  if (node.type === 'module_declaration') {
-    return [node.child(1).text];
-  } else {
-    return node.namedChildren.map(getModuleNames).flat();
+export function generateTreeCode(node: SyntaxNode, language: 'jscad' | 'manifold') {
+  let getCodeFormats: (code: string) => { [key: string]: string };
+  if (language === 'jscad') {
+    syntax = jscadSyntax;
+    getCodeFormats = getCodeFormatsJscad;
   }
-}
-
-export function generateTreeCode(node) {
-  moduleNames = getModuleNames(node)
+  else {
+    syntax = manifoldSyntax;
+    getCodeFormats = getCodeFormatsJManifold;
+  }
   const code = generateCode(node)
-  return { code, node }
+  const formats = getCodeFormats(code)
+  return { code, formats, node }
 }
 
-export function generateCode(node) {
-  const syntax = jscadSyntax;
+export function generateCode(node: SyntaxNode) {
   if (!node) {
     throw new Error('Node not provided');
   }
@@ -43,12 +44,12 @@ export function generateCode(node) {
     const close = syntax[type]?.close || '';
     const separator = syntax[type]?.separator || '';
     if ('generator' in syntax[type]) {
-      result = syntax[type].generator(node);
+      result = syntax[type].generator!(node);
     } else if ('children' in syntax[type]) {
       const children =
         syntax[type].children === 'all'
           ? node.namedChildren.map((namedChild) => generateCode(namedChild))
-          : syntax[type].children.map((child) => {
+          : syntax[type].children!.map((child) => {
             const childNode = child.hasOwnProperty('childIndex')
               ? node.children[child.childIndex]
               : node[child.name];
@@ -65,7 +66,7 @@ export function generateCode(node) {
       result = node.text;
     }
 
-    node.jscadCode = result;
+    node.outputCode = result;
     return result;
   } catch (error) {
     if (error.node) {
@@ -85,13 +86,13 @@ export function generateCode(node) {
   }
 }
 
-export function generateFunctionCall (node) {
+export function generateFunctionCall (node: SyntaxNode) {
   //We can probably share code with module call 
 
-  const functionName = node.child(0).text
+  const functionName = node.child(0)?.text
   const args = []
-  for (let i = 1; i < node.childCount; i++) {
-    args.push(generateCode(node.child(i)))
+  for (let i = 1; i < node.children.length; i++) {
+    args.push(generateCode(node.children[i]))
   }
   // if (functionName === 'cube') {
   //   return `CSG.${functionName}({size: [${args.join(', ')}]})`;
@@ -129,4 +130,34 @@ export function generateFunctionCall (node) {
     const mappedName = mapping[functionName] || functionName
     return `${mappedName}(${args.join(', ')})`
   }
+}
+
+export function parseFunctionArguments (node: SyntaxNode) {
+  const args: {[key: string]: any} = {}
+  const positionalArgs = []
+  let children = ''
+
+  const childrenCount = node.namedChildren?.length || 0;
+
+  for (let i = 0; i < childrenCount; i++) {
+    const child = node.namedChild(i);
+    if (!child) {throw new Error(`Child not found at index ${i}`)}
+
+    // Openscad allows assignment as a way to pass named arguments
+    if (child.type === 'named_argument' || child.type === 'assignment') {
+      let child0 = child.namedChild(0);
+      let child1 = child.namedChild(1);
+      if (!child0 || !child1) {throw new Error(`Named argument children not found at index ${i}`)}
+      const key = generateCode(child0)
+      const value = generateCode(child1)
+      args[key] = value
+    } else if ((child as SyntaxNode).isModuleChildren) { // This is our flag to indicate this node is the "children" of a module call (ie difference() { children })
+      children = generateCode(child)
+    } else {
+      args[i] = generateCode(child)
+    }
+  }
+  args.length = childrenCount
+
+  return { args, children }
 }

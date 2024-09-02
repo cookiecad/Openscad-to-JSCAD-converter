@@ -1,23 +1,25 @@
 "use server"
-import { parseOpenSCADFormats } from 'converter'
 import * as converter from 'converter'
 
 export const printOpenSCADTree = async (code: string) => converter.printOpenSCADTree(code);
 
-export async function parseOpenSCAD(code: string) {
+export async function parseOpenSCAD(code: string, language: 'jscad' | 'manifold') {
   // let { parseOpenSCADFormats } = await import('converter')
   let result;
   try {
-    result = await parseOpenSCADFormats(code, '')
-  } catch (e) {
-    return { error: {
+    result = await converter.parseOpenSCAD({code, language});
+  } catch (e: any) {
+    if (!(e.message && e?.data?.tree)) { throw e; }
+    return { 
+      error: {
       message: e.message,
       data: {
         tree: serializeTree(e.data.tree.rootNode), 
         }
     } };
   }
-  return {...result, tree: result.tree && serializeTree(result.tree)}
+  result = {...result, rootNode: result.rootNode && serializeTree(result.rootNode)}
+  return result
 }
 
 export interface SerializedNode {
