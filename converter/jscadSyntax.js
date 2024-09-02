@@ -28,68 +28,6 @@ export const jscadSyntax = {
     children: 'all',
     separator: ''
   },
-  assignment: {
-    generator: (node) => {
-      const leftNode = generateCode(node.namedChild(0)) // variable name
-      const rightNode = generateCode(node.namedChild(1))
-      let code
-
-      // Check if variable is already assigned in current scope
-      if (!scopes[scopes.length - 1].has(leftNode)) {
-        code = `let ${leftNode} = ${rightNode}\n`
-        scopes[scopes.length - 1].add(leftNode)
-      } else {
-        code = `${leftNode} = ${rightNode}\n`
-      }
-      return code
-    }
-  },
-  comment: {
-    open: '', // comment already includes the "//"
-    close: '\n',
-    children: []
-  },
-  list: {
-    open: '[',
-    close: ']',
-    children: 'all',
-    separator: ', '
-  },
-  identifier: {
-  },
-  number: {
-  },
-  boolean: {
-  },
-  ';': {
-  },
-  '[': {
-  },
-  ']': {
-  },
-  ':': {
-  },
-  unary_expression: {
-    open: '',
-    close: '',
-    children: [
-      { childIndex: 0, name: 'operator', optional: false, isText: true },
-      { childIndex: 1, name: '_expression', optional: false }
-    ],
-    separator: ''
-  },
-  binary_expression: {
-    open: '',
-    close: '',
-    children: [
-      { childIndex: 0, name: 'left', optional: false },
-      { childIndex: 1, name: 'operator', optional: false, isText: true },
-      { childIndex: 2, name: 'right', optional: false }
-    ],
-    separator: ' '
-  },
-  operator: {
-  },
   function_call: {
     generator: generateFunctionCall
   },
