@@ -16,9 +16,9 @@
  *
  */
 const listSeq = (rule, separator, trailing_separator = false) =>
-  trailing_separator ?
-    seq(rule, repeat(seq(separator, rule)), optional(separator)) :
-    seq(rule, repeat(seq(separator, rule)));
+  trailing_separator
+    ? seq(rule, repeat(seq(separator, rule)), optional(separator))
+    : seq(rule, repeat(seq(separator, rule)))
 
 /**
  * Creates a rule to match one or more of the rules separated by a comma
@@ -30,9 +30,9 @@ const listSeq = (rule, separator, trailing_separator = false) =>
  * @return {SeqRule}
  *
  */
-function commaSep1(rule, trailing_separator = false) {
+function commaSep1 (rule, trailing_separator = false) {
   // return seq(rule, repeat(seq(',', rule)))
-  return listSeq(rule, ',', trailing_separator);
+  return listSeq(rule, ',', trailing_separator)
 }
 
 /**
@@ -45,8 +45,8 @@ function commaSep1(rule, trailing_separator = false) {
  * @return {ChoiceRule}
  *
  */
-function commaSep(rule, trailing_separator = false) {
-  return optional(commaSep1(rule, trailing_separator));
+function commaSep (rule, trailing_separator = false) {
+  return optional(commaSep1(rule, trailing_separator))
 }
 
 /**
@@ -65,8 +65,8 @@ function commaSep(rule, trailing_separator = false) {
  *
  * @return {ChoiceRule}
  */
-function opt_grouping(grouping, rule) {
-  return choice(grouping(rule), rule);
+function opt_grouping (grouping, rule) {
+  return choice(grouping(rule), rule)
 }
 
 /**
@@ -76,8 +76,8 @@ function opt_grouping(grouping, rule) {
  *
  * @return {SeqRule}
  */
-function parens(rule) {
-  return seq('(', rule, ')');
+function parens (rule) {
+  return seq('(', rule, ')')
 }
 
 /**
@@ -87,8 +87,8 @@ function parens(rule) {
  *
  * @return {SeqRule}
  */
-function brackets(rule) {
-  return seq('[', rule, ']');
+function brackets (rule) {
+  return seq('[', rule, ']')
 }
 
 /**
@@ -98,8 +98,8 @@ function brackets(rule) {
  *
  * @return {SeqRule}
  */
-function curlies(rule) {
-  return seq('{', rule, '}');
+function curlies (rule) {
+  return seq('{', rule, '}')
 }
 
 /**
@@ -112,8 +112,8 @@ function curlies(rule) {
  *
  * @return {SeqRule}
  */
-function bodied_block(keyword, effect, block) {
-  return seq(keyword, effect, field('body', block));
+function bodied_block (keyword, effect, block) {
+  return seq(keyword, effect, field('body', block))
 }
 
 /**
@@ -125,8 +125,8 @@ function bodied_block(keyword, effect, block) {
  *
  * @return {SeqRule}
  */
-function binary_operator(operator, rule) {
-  return seq(field('left', rule), operator, field('right', rule));
+function binary_operator (operator, rule) {
+  return seq(field('left', rule), operator, field('right', rule))
 }
 
 module.exports = grammar({
@@ -134,13 +134,13 @@ module.exports = grammar({
 
   extras: $ => [
     $.comment,
-    /\s/,
+    /\s/
   ],
 
   supertypes: $ => [
     $.literal,
     $.expression,
-    $.number,
+    $.number
   ],
 
   word: $ => $.identifier,
@@ -152,7 +152,7 @@ module.exports = grammar({
       seq($.assignment, ';'),
       $._statement,
       $.module_declaration,
-      $.function_declaration,
+      $.function_declaration
     ),
 
     // modules
@@ -160,7 +160,7 @@ module.exports = grammar({
       'module',
       field('name', $.identifier),
       field('parameters', $.parameters_declaration),
-      field('body', $._statement),
+      field('body', $._statement)
     ),
     parameters_declaration: $ => parens(seq(commaSep($._parameter_declaration), optional(','))),
     // TODO: segment assigment so that parameters can have the LHS highlighted as @parameter
@@ -173,7 +173,7 @@ module.exports = grammar({
       'function',
       field('name', $.identifier),
       field('parameters', $.parameters_declaration),
-      '=', $.expression,
+      '=', $.expression
     ),
 
     // statements are language constructs that can create objects
@@ -188,7 +188,7 @@ module.exports = grammar({
       $.transform_chain,
       $.include_statement,
       $.assert_statement,
-      ';',
+      ';'
     ),
 
     // use/include statements
@@ -201,7 +201,7 @@ module.exports = grammar({
     assignment: $ => seq(
       field('left', $._variable_name),
       '=',
-      field('right', $.expression),
+      field('right', $.expression)
     ),
     union_block: $ => curlies(repeat($._item)),
 
@@ -209,28 +209,28 @@ module.exports = grammar({
     for_block: $ => bodied_block(
       'for',
       $.parenthesized_assignments,
-      $._statement,
+      $._statement
     ),
     intersection_for_block: $ => bodied_block(
       'intersection_for',
       $.parenthesized_assignments,
-      $._statement,
+      $._statement
     ),
     let_block: $ => bodied_block(
       'let',
       $.parenthesized_assignments,
-      $._statement,
+      $._statement
     ),
     assign_block: $ => bodied_block(
       'assign',
       $.parenthesized_assignments,
-      $._statement,
+      $._statement
     ),
     if_block: $ => prec.right(seq(
       'if',
       field('condition', $.parenthesized_expression),
       field('consequence', $._statement),
-      optional(field('alternative', seq('else', $._statement))),
+      optional(field('alternative', seq('else', $._statement)))
     )),
 
     // function calls
@@ -239,7 +239,7 @@ module.exports = grammar({
     transform_chain: $ => seq($.module_call, $._statement),
     module_call: $ => seq(
       field('name', $.identifier),
-      field('arguments', $.arguments),
+      field('arguments', $.arguments)
     ),
     arguments: $ => parens(commaSep(choice($.expression, $.assignment), true)),
 
@@ -248,7 +248,7 @@ module.exports = grammar({
     condition_update_clause: $ => parens(seq(
       field('initializer', commaSep($.assignment)), ';',
       field('condition', $.expression), ';',
-      field('update', commaSep($.assignment)),
+      field('update', commaSep($.assignment))
     )),
 
     // expressions are syntax trees that result in values (not objects)
@@ -263,7 +263,7 @@ module.exports = grammar({
       $.dot_index_expression,
       $.assert_expression,
       $.literal,
-      $._variable_name,
+      $._variable_name
     ),
     let_expression: $ => bodied_block('let', $.parenthesized_assignments, $.expression),
 
@@ -275,19 +275,19 @@ module.exports = grammar({
       $.undef,
       $.function,
       $.range,
-      $.list,
+      $.list
     ),
 
     // compound atoms that are still literals
     function: $ => seq(
       'function',
       field('parameters', $.parameters_declaration),
-      field('body', $.expression),
+      field('body', $.expression)
     ),
     range: $ => brackets(seq(
       field('start', $.expression),
       optional(seq(':', field('increment', $.expression))),
-      ':', field('end', $.expression),
+      ':', field('end', $.expression)
     )),
 
     list: $ => brackets(seq(commaSep($._list_cell, true))),
@@ -295,44 +295,44 @@ module.exports = grammar({
     _comprehension_cell: $ => choice(
       $.expression,
       opt_grouping(parens, $.each),
-      opt_grouping(parens, $.list_comprehension),
+      opt_grouping(parens, $.list_comprehension)
     ),
     each: $ => seq('each', choice($.expression, $.list_comprehension)),
 
     list_comprehension: $ => seq(
-      choice($.for_clause, $.if_clause),
+      choice($.for_clause, $.if_clause)
     ),
     for_clause: $ => seq('for',
       choice($.parenthesized_assignments, $.condition_update_clause),
-      $._comprehension_cell,
+      $._comprehension_cell
     ),
     if_clause: $ => prec.right(seq(
       'if',
       field('condition', $.parenthesized_expression),
       field('consequence', $._comprehension_cell),
       optional(
-        seq('else', field('alternative', $._comprehension_cell)),
-      ),
+        seq('else', field('alternative', $._comprehension_cell))
+      )
     )),
 
     // operations on expressions
     function_call: $ => prec(10,
       seq(
         field('function', $.expression),
-        field('arguments', $.arguments),
+        field('arguments', $.arguments)
       )),
     index_expression: $ => prec(10, seq(
       field('value', $.expression),
-      brackets(field('index', $.expression)),
+      brackets(field('index', $.expression))
     )),
     dot_index_expression: $ => prec(10, seq(
       field('value', $.expression), '.',
-      field('index', $.identifier),
+      field('index', $.identifier)
     )),
     unary_expression: $ => choice(
       prec(9, seq('!', $.expression)),
       prec.left(6, seq('-', $.expression)),
-      prec.left(6, seq('+', $.expression)),
+      prec.left(6, seq('+', $.expression))
     ),
     binary_expression: $ => choice(
       prec.left(2, binary_operator('||', $.expression)),
@@ -348,12 +348,12 @@ module.exports = grammar({
       prec.left(7, binary_operator('*', $.expression)),
       prec.left(7, binary_operator('/', $.expression)),
       prec.left(7, binary_operator('%', $.expression)),
-      prec.left(8, binary_operator('^', $.expression)),
+      prec.left(8, binary_operator('^', $.expression))
     ),
     ternary_expression: $ => prec.right(1, seq(
       field('condition', $.expression), '?',
       field('consequence', $.expression), ':',
-      field('alternative', $.expression),
+      field('alternative', $.expression)
     )),
 
     // Asserts are unusual in that they can be inserted into both statements and
@@ -365,9 +365,9 @@ module.exports = grammar({
     _assert_clause: $ => seq('assert', parens(
       optional(seq(field('condition', $.expression),
         optional(seq(',', field('message', $.expression),
-          optional(seq(',', field('trailing_args', commaSep1($.expression)))),
-        )),
-      )),
+          optional(seq(',', field('trailing_args', commaSep1($.expression))))
+        ))
+      ))
     )),
     assert_statement: $ => seq($._assert_clause, $._statement),
     assert_expression: $ => seq($._assert_clause, $.expression),
@@ -390,8 +390,8 @@ module.exports = grammar({
       seq(
         '/*',
         /[^*]*\*+([^/*][^*]*\*+)*/,
-        '/',
-      ),
-    )),
-  },
-});
+        '/'
+      )
+    ))
+  }
+})

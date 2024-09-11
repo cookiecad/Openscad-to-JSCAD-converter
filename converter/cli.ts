@@ -20,7 +20,7 @@ if (!fs.existsSync(outputFolder)) {
 const code = fs.readFileSync(filename, 'utf8')
 
 // Parse the OpenSCAD code and generate formats
-parseOpenSCAD({code, language: 'jscad'})
+parseOpenSCAD({ code, language: 'jscad' })
   .then(async result => {
     console.log('JSCAD code ---------------:')
     console.log(result.outputCode)

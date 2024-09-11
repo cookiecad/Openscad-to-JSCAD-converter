@@ -1,15 +1,12 @@
 import dedent from 'dedent'
-import { helperFunctions, out, scopes, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js'
-import { generatorSyntax } from 'types.js'
-import { parseFunctionArguments } from './codeGeneration'
-import { generateFunctionCall, generateCode } from './codeGeneration'
-import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers'
+import { type generatorSyntax } from 'types.js'
 import * as commonSyntax from './commonSyntax'
 
-const openscadModulesManifold = {
+
+const openscadModulesManifold: commonSyntax.OpenScadModules = {
   cube: {
     openscadParams: ['size', 'center'],
-    code: (params: any) => {
+    code: (params) => {
       params.size = convertVector3(params.size || '1') // Default
       return `cube(${params.size},${params.center || false})\n`
     }
@@ -18,7 +15,7 @@ const openscadModulesManifold = {
 
 export const manifoldSyntax: generatorSyntax = {
   ...commonSyntax.syntax,
-  
+
   source_file: {
     open: dedent`
       const {cube, sphere, union} = Manifold;
@@ -30,9 +27,9 @@ export const manifoldSyntax: generatorSyntax = {
   module_call: {
     generator: (node) => {
       return commonSyntax.moduleCallGenerator(node, openscadModulesManifold)
-    }      
+    }
 
-  },
+  }
 }
 
 const convertVector3 = (value: string) => {
@@ -41,9 +38,9 @@ const convertVector3 = (value: string) => {
   return `[${value}, ${value}, ${value}]`
 }
 
-export function getCodeFormats(code: string) {
+export function getCodeFormats (code: string) {
   const outputJs = dedent`${code}`
   return {
-    jsCode: outputJs,
+    jsCode: outputJs
   }
 }

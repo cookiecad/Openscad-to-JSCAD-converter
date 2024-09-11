@@ -1,39 +1,39 @@
-"use server"
+'use server'
 import * as converter from 'converter'
 
-export const printOpenSCADTree = async (code: string) => converter.printOpenSCADTree(code);
+export const printOpenSCADTree = async (code: string) => converter.printOpenSCADTree(code)
 
-export async function parseOpenSCAD(code: string, language: 'jscad' | 'manifold') {
+export async function parseOpenSCAD (code: string, language: 'jscad' | 'manifold') {
   // let { parseOpenSCADFormats } = await import('converter')
-  let result;
+  let result
   try {
-    result = await converter.parseOpenSCAD({code, language});
+    result = await converter.parseOpenSCAD({ code, language })
   } catch (e: any) {
-    if (!(e.message && e?.data?.tree)) { throw e; }
-    return { 
+    if (!(e.message && e?.data?.tree)) { throw e }
+    return {
       error: {
-      message: e.message,
-      data: {
-        tree: serializeTree(e.data.tree.rootNode), 
+        message: e.message,
+        data: {
+          tree: serializeTree(e.data.tree.rootNode)
         }
-    } };
+      }
+    }
   }
-  result = {...result, rootNode: result.rootNode && serializeTree(result.rootNode)}
+  result = { ...result, rootNode: result.rootNode && serializeTree(result.rootNode) }
   return result
 }
 
 export interface SerializedNode {
-  type: string;
-  text: string;
-  startPosition: any; // Replace 'any' with the actual type if known
-  endPosition: any;   // Replace 'any' with the actual type if known
-  childCount: number;
-  children: SerializedNode[];
-  jscadCode?: string;
+  type: string
+  text: string
+  startPosition: any // Replace 'any' with the actual type if known
+  endPosition: any // Replace 'any' with the actual type if known
+  childCount: number
+  children: SerializedNode[]
+  jscadCode?: string
 }
-function serializeTree(rootNode: converter.JscadSyntaxNode ) {
-  
-  function serializeNode(node: converter.JscadSyntaxNode) {
+function serializeTree (rootNode: converter.JscadSyntaxNode) {
+  function serializeNode (node: converter.JscadSyntaxNode) {
     const serializedNode: SerializedNode = {
       type: node.type,
       text: node.text.slice(0, 50),
@@ -41,18 +41,18 @@ function serializeTree(rootNode: converter.JscadSyntaxNode ) {
       startPosition: node.startPosition,
       endPosition: node.endPosition,
       childCount: node.childCount,
-      children: [],
+      children: []
     }
-    
+
     for (let i = 0; i < node.childCount; i++) {
-      const childNode = node.child(i);
+      const childNode = node.child(i)
       if (childNode !== null) {
-        serializedNode.children.push(serializeNode(childNode));
+        serializedNode.children.push(serializeNode(childNode))
       }
     }
-    
-    return serializedNode;
+
+    return serializedNode
   }
-  
-  return JSON.stringify(serializeNode(rootNode));
+
+  return JSON.stringify(serializeNode(rootNode))
 }

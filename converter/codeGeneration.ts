@@ -1,50 +1,49 @@
-//@ts-check
-import { jscadSyntax, getCodeFormats as getCodeFormatsJscad } from './jscadSyntax';
-import { manifoldSyntax, getCodeFormats as getCodeFormatsJManifold } from './manifoldSyntax';
-import grammar from "tree-sitter-openscad/src/grammar.json" with { type: "json" }
+// @ts-check
+import { jscadSyntax, getCodeFormats as getCodeFormatsJscad } from './jscadSyntax'
+import { manifoldSyntax, getCodeFormats as getCodeFormatsJManifold } from './manifoldSyntax'
+import grammar from 'tree-sitter-openscad/src/grammar.json' with { type: 'json' }
 
-import { out } from './utils.js';
-import { SyntaxNode } from './types';
+import { out } from './utils.js'
+import { SyntaxNode } from './types'
 
-let syntax: typeof jscadSyntax | typeof manifoldSyntax;
+let syntax: typeof jscadSyntax | typeof manifoldSyntax
 
-export function generateTreeCode(node: SyntaxNode, language: 'jscad' | 'manifold') {
-  let getCodeFormats: (code: string) => { [key: string]: string };
+export function generateTreeCode (node: SyntaxNode, language: 'jscad' | 'manifold') {
+  let getCodeFormats: (code: string) => { [key: string]: string }
   if (language === 'jscad') {
-    syntax = jscadSyntax;
-    getCodeFormats = getCodeFormatsJscad;
-  }
-  else {
-    syntax = manifoldSyntax;
-    getCodeFormats = getCodeFormatsJManifold;
+    syntax = jscadSyntax
+    getCodeFormats = getCodeFormatsJscad
+  } else {
+    syntax = manifoldSyntax
+    getCodeFormats = getCodeFormatsJManifold
   }
   const code = generateCode(node)
   const formats = getCodeFormats(code)
   return { code, formats, node }
 }
 
-export function generateCode(node: SyntaxNode) {
+export function generateCode (node: SyntaxNode) {
   if (!node) {
-    throw new Error('Node not provided');
+    throw new Error('Node not provided')
   }
-  const type = node.type;
+  const type = node.type
   if (!syntax[type]) {
-    const e = new Error(`Syntax not found for type: ${type}`);
-    e.node = node;
-    throw e;
+    const e = new Error(`Syntax not found for type: ${type}`)
+    e.node = node
+    throw e
   }
 
   // if (STOP_PROCESSIMG) { return; }
 
   try {
-    process.stdout.write(`${node.type} `);
-    let result = '';
+    process.stdout.write(`${node.type} `)
+    let result = ''
 
-    const open = syntax[type]?.open || '';
-    const close = syntax[type]?.close || '';
-    const separator = syntax[type]?.separator || '';
+    const open = syntax[type]?.open || ''
+    const close = syntax[type]?.close || ''
+    const separator = syntax[type]?.separator || ''
     if ('generator' in syntax[type]) {
-      result = syntax[type].generator!(node);
+      result = syntax[type].generator!(node)
     } else if ('children' in syntax[type]) {
       const children =
         syntax[type].children === 'all'
@@ -52,33 +51,33 @@ export function generateCode(node: SyntaxNode) {
           : syntax[type].children!.map((child) => {
             const childNode = child.hasOwnProperty('childIndex')
               ? node.children[child.childIndex]
-              : node[child.name];
+              : node[child.name]
             if (!childNode) {
               throw new {
                 ...Error(`Child node not found: ${child.name}`),
                 node
-              }();
+              }()
             }
-            return child.isText ? childNode.text : generateCode(childNode);
-          });
-      result = `${open}${children.join(separator)}${close}`;
+            return child.isText ? childNode.text : generateCode(childNode)
+          })
+      result = `${open}${children.join(separator)}${close}`
     } else {
-      result = node.text;
+      result = node.text
     }
 
-    node.outputCode = result;
-    return result;
+    node.outputCode = result
+    return result
   } catch (error) {
     if (error.node) {
-      node = error.node;
+      node = error.node
     }
-    process.stdout.write('\n');
-    out('red', 'node type: ');
-    console.log(`${node.type}, text: ${node.text}`);
-    const rule = grammar.rules[node.type];
+    process.stdout.write('\n')
+    out('red', 'node type: ')
+    console.log(`${node.type}, text: ${node.text}`)
+    const rule = grammar.rules[node.type]
     if (rule) {
-      out('red', 'Grammar rule: ');
-      console.log(`${JSON.stringify(rule)}`);
+      out('red', 'Grammar rule: ')
+      console.log(`${JSON.stringify(rule)}`)
     }
     error.message = `Error in generateCode: ${error.message}\n node type: ${node.type}, text: ${node.text}
     grammar rule: ${JSON.stringify(rule)}`
@@ -87,7 +86,7 @@ export function generateCode(node: SyntaxNode) {
 }
 
 export function generateFunctionCall (node: SyntaxNode) {
-  //We can probably share code with module call 
+  // We can probably share code with module call
 
   const functionName = node.child(0)?.text
   const args = []
@@ -123,7 +122,7 @@ export function generateFunctionCall (node: SyntaxNode) {
       sqrt: 'Math.sqrt',
       PI: 'Math.PI',
       atan2: 'Math.atan2',
-      round: 'Math.round',
+      round: 'Math.round'
 
       // Add more mappings here
     }
@@ -133,21 +132,21 @@ export function generateFunctionCall (node: SyntaxNode) {
 }
 
 export function parseFunctionArguments (node: SyntaxNode) {
-  const args: {[key: string]: any} = {}
+  const args: { [key: string]: any } = {}
   const positionalArgs = []
   let children = ''
 
-  const childrenCount = node.namedChildren?.length || 0;
+  const childrenCount = node.namedChildren?.length || 0
 
   for (let i = 0; i < childrenCount; i++) {
-    const child = node.namedChild(i);
-    if (!child) {throw new Error(`Child not found at index ${i}`)}
+    const child = node.namedChild(i)
+    if (child == null) { throw new Error(`Child not found at index ${i}`) }
 
     // Openscad allows assignment as a way to pass named arguments
     if (child.type === 'named_argument' || child.type === 'assignment') {
-      let child0 = child.namedChild(0);
-      let child1 = child.namedChild(1);
-      if (!child0 || !child1) {throw new Error(`Named argument children not found at index ${i}`)}
+      const child0 = child.namedChild(0)
+      const child1 = child.namedChild(1)
+      if ((child0 == null) || (child1 == null)) { throw new Error(`Named argument children not found at index ${i}`) }
       const key = generateCode(child0)
       const value = generateCode(child1)
       args[key] = value

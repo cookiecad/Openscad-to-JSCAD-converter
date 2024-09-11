@@ -1,73 +1,67 @@
 // @ts-check
 import fs from 'fs'
 import path from 'path'
-import Parser, {Tree, SyntaxNode} from 'tree-sitter'
+import Parser, { Tree, SyntaxNode } from 'tree-sitter'
 import OpenSCAD from 'tree-sitter-openscad'
 import * as prettier from 'prettier'
 import dedent from 'dedent'
 
 import { generateTreeCode } from './codeGeneration'
 
-type JscadSyntaxNode = SyntaxNode & {jscadCode?: string}
-export type { Tree, JscadSyntaxNode}
+type JscadSyntaxNode = SyntaxNode & { jscadCode?: string }
+export type { Tree, JscadSyntaxNode }
 
+let parser: Parser
 
-let parser: Parser;
-
-async function init() {
-  if (parser) return;
+async function init () {
+  if (parser) return
   // await Parser.init()
   parser = new Parser()
   try {
     console.log('Loading Tree-Sitter language...', OpenSCAD)
-    //await parser.setLanguage(OpenSCAD)
+    // await parser.setLanguage(OpenSCAD)
     parser.setLanguage(OpenSCAD)
-    } catch (e) {
-      console.error('Failed to load Tree-Sitter language:', e);
-      throw `Failed to load Tree-Sitter language ${e}`;
-    }    
+  } catch (e) {
+    console.error('Failed to load Tree-Sitter language:', e)
+    throw `Failed to load Tree-Sitter language ${e}`
+  }
 }
 
 /**
  * Parses the given OpenSCAD code and generates JSCAD code.
  */
-export async function parseOpenSCAD(options: {code: string, language: 'jscad' | 'manifold'}) {
-
+export async function parseOpenSCAD (options: { code: string, language: 'jscad' | 'manifold' }) {
   await init()
-  let { code, language } = options;
-  let outputCode, tree, newRootNode, formats;
-  tree = parser.parse(code);
-  
+  const { code, language } = options
+  let outputCode, tree, newRootNode, formats
+  tree = parser.parse(code)
+
   try {
     // Traverse the syntax tree and generate JSCAD code
-    ({ code: outputCode, formats, node: newRootNode } = generateTreeCode(tree.rootNode, language));
-  }
-  catch (e: any) {
+    ({ code: outputCode, formats, node: newRootNode } = generateTreeCode(tree.rootNode, language))
+  } catch (e: any) {
     console.log('tree', code)
-    console.error('Error generating JSCAD code:', e);
+    console.error('Error generating JSCAD code:', e)
     if (e instanceof Error) {
-      e.message = `Error generating JSCAD code: ${e.message}`;
+      e.message = `Error generating JSCAD code: ${e.message}`
+    } else {
+      e = new Error(`Error generating JSCAD code: ${e}`)
     }
-    else {
-      e = new Error(`Error generating JSCAD code: ${e}`);
-    }
-    Object.assign(e, { data: { tree } });
-    throw e;
+    Object.assign(e, { data: { tree } })
+    throw e
   }
   try {
-    outputCode = await prettier.format(outputCode!, { parser: 'babel' })
+    outputCode = await prettier.format(outputCode, { parser: 'babel' })
   } catch (e) {
     console.log('Error formatting code, continuing without formatting', e)
   }
 
-  let result = {outputCode, formats, rootNode: newRootNode}
+  const result = { outputCode, formats, rootNode: newRootNode }
   console.log('result', result)
-  return result;
-
+  return result
 }
 
-
-export function printOpenSCADTree(code: string) {
+export function printOpenSCADTree (code: string) {
   const tree = parser.parse(code)
   const printNode = (node: any, depth: number) => {
     const indent = '  '.repeat(depth)

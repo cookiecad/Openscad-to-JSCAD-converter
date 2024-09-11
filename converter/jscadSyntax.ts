@@ -8,12 +8,12 @@ import dedent from 'dedent'
  * @type {import('./types').generatorSyntax}
  */
 
-const convertVector3 = (value: string) => {
+const convertVector3 = (value: string): string => {
   if (value === undefined) return ''
   if (value.startsWith('[')) return value
   return `[${value}, ${value}, ${value}]`
 }
-const centerString = (center: string, size: string) => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
+const centerString = (center: string, size: string): string => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
 
 const openscadModulesJscad: commonSyntax.OpenScadModules = {
   // if (name === 'linear_extrude') {
@@ -80,7 +80,7 @@ const openscadModulesJscad: commonSyntax.OpenScadModules = {
   cylinder: {
     openscadParams: ['h', 'r1', 'r2', 'center'], // These are the only positional parameters, the others are named
     code: (params) => {
-      const h = params.h || params.h
+      const h = params.h
       const r1 = params.r1 || params.r || (params.d && `${params.d} / 2`) || (params.d1 && `${params.d1} / 2`) || '1'
       const r2 = params.r2 || (params.d2 && `${params.d2} / 2`)
       const center = params.center || 'false'
@@ -364,7 +364,7 @@ export const jscadSyntax = {
   }
 }
 
-export function getCodeFormats(jscadCode: string) {
+export function getCodeFormats (jscadCode: string) {
   const outputJs = dedent`
   import jscad from '@jscad/modeling'
   export function main() {
@@ -381,8 +381,8 @@ export function getCodeFormats(jscadCode: string) {
 `
 
   return {
-    jscadCode: jscadCode,
+    jscadCode,
     jsCode: outputJs,
-    caditCode: caditJs,
+    caditCode: caditJs
   }
 }

@@ -1,65 +1,63 @@
-import { generateFunctionCall, generateCode } from './codeGeneration'
+import { generateFunctionCall, generateCode, parseFunctionArguments } from './codeGeneration'
 import { helperFunctions, out, scopes, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js'
 import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js'
-import { parseFunctionArguments } from './codeGeneration'
 
 import generatedSyntax from './syntaxFromGrammar.js'
 import dedent from 'dedent'
 import { generatorSyntax, SyntaxNode } from 'types'
 
-export type OpenScadModule = {
-  openscadParams: string[];
-  code: (params: Record<string, any>, children?: string) => string;
-};
+export interface OpenScadModule {
+  openscadParams: string[]
+  code: (params: Record<string, string>, children?: string) => string
+}
 
-export type OpenScadModules = {
-  [moduleName: string]: OpenScadModule;
-};
+export interface OpenScadModules {
+  [moduleName: string]: OpenScadModule
+}
 
 export const moduleCallGenerator = (node: SyntaxNode, openscadModules: OpenScadModules): string => {
-    const name = node.child(0)!.text;
-    const argumentsNode = node.child(1)!;
-    const parsedArgs = parseFunctionArguments(argumentsNode);
-    const { args, children } = parsedArgs;
+  const name = node.child(0)!.text
+  const argumentsNode = node.child(1)!
+  const parsedArgs = parseFunctionArguments(argumentsNode)
+  const { args, children } = parsedArgs
 
-    let result: string
-    const openscadModule = openscadModules[name];
-    if (openscadModule) {
-      const openscadModule = openscadModules[name]
+  let result: string
+  const openscadModule = openscadModules[name]
+  if (openscadModule) {
+    const openscadModule = openscadModules[name]
 
-      const namedArgs: any = {}
-      // Args can be positional or named (once an argument is named, all following arguments must be named)
-      for (let i = 0; i < args.length; i++) {
-        let namedArg, value
-        if (args[i] !== undefined) { // if args[i] is undefined, it's a named argument
-          // Convert positioned arguments to named arguments
-          namedArg = openscadModule.openscadParams[i]
-          value = args[i]
-        } else {
-          namedArg = Object.keys(args)[i]
-          value = args[namedArg]
-        }
-        namedArgs[namedArg] = value
+    const namedArgs: any = {}
+    // Args can be positional or named (once an argument is named, all following arguments must be named)
+    for (let i = 0; i < args.length; i++) {
+      let namedArg, value
+      if (args[i] !== undefined) { // if args[i] is undefined, it's a named argument
+        // Convert positioned arguments to named arguments
+        namedArg = openscadModule.openscadParams[i]
+        value = args[i]
+      } else {
+        namedArg = Object.keys(args)[i]
+        value = args[namedArg]
       }
+      namedArgs[namedArg] = value
+    }
 
-      // Get the generated value for each argument
-      result = openscadModule.code(namedArgs, children)
-    } else {
-      let comment = `/* ${name} not implemented: ${node.text} */`
-      return comment;
-      //result = `${name}(\n${tabbed(argsCode)}\n)`
-    }
-    // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
-    if (node.parent?.parent?.type == 'union_block') {
-      result = result + ','
-    }
-    return result
+    // Get the generated value for each argument
+    result = openscadModule.code(namedArgs, children)
+  } else {
+    const comment = `/* ${name} not implemented: ${node.text} */`
+    return comment
+    // result = `${name}(\n${tabbed(argsCode)}\n)`
   }
-
+  // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
+  if (node.parent?.parent?.type == 'union_block') {
+    result = result + ','
+  }
+  return result
+}
 
 export const syntax: generatorSyntax = {
   ...generatedSyntax,
-  
+
   transform_chain: {
     generator: (node: SyntaxNode) => {
       let result
@@ -151,6 +149,6 @@ export const syntax: generatorSyntax = {
     separator: ' '
   },
   operator: {
-  },
+  }
 
-} 
+}
