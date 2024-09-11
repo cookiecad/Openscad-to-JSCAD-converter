@@ -1,18 +1,109 @@
 import { generateFunctionCall, generateCode } from './codeGeneration'
-import { helperFunctions, out, scopes, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js'
-import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js'
-import { parseFunctionArguments } from './codeGeneration'
-import { commonSyntax } from './commonSyntax'
-
+import { helperFunctions, startNewScope, endCurrentScope, inTransformChain, startTransformChain, endTransformChain, pushTransformChain, popTransformChain } from './utils.js'
+import { tabbed } from './nodeHelpers.js'
+import * as commonSyntax from './commonSyntax'
 import dedent from 'dedent'
-import { mainModule } from 'process'
 
 /**
  * @type {import('./types').generatorSyntax}
  */
 
+const convertVector3 = (value: string) => {
+  if (value === undefined) return ''
+  if (value.startsWith('[')) return value
+  return `[${value}, ${value}, ${value}]`
+}
+const centerString = (center: string, size: string) => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
+
+const openscadModulesJscad: commonSyntax.OpenScadModules = {
+  // if (name === 'linear_extrude') {
+  //   //For linear extrude, the first argument is the height, the rest are the objects
+  //   //TODO add support for named parameters
+  //   args = dedent`{height: ${generateCode(node.child(1).namedChild(0))}}, ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }`
+  // }
+  // else {
+  // args = generateCode(node.child(1))
+  // const args = generateCode(argumentsNode);
+
+  // Map openscad function names and parameters to jscad
+
+  // TODO: We may need a helper function to determine at runtime if size is a vector or a number. Center requires a vector
+
+  cube: {
+    openscadParams: ['size', 'center'],
+    code: (params) => {
+      params.size = convertVector3(params.size || '1') // Default
+      return `cuboid({size: ${params.size}${centerString(params.center, params.size)}})\n`
+    }
+  },
+  linear_extrude: {
+    openscadParams: ['height', 'v', 'center', 'convexity', 'twist', 'slices', 'scale', '$fn'],
+    code: (params, children) => {
+      return `extrudeLinear({height: ${params.height}}, ${children})\n`
+    }
+  },
+  polygon: {
+    openscadParams: ['points'],
+    code: (params) => {
+      return `polygonEnsureCounterclockwise({points: ${params.points}})\n`
+    }
+  },
+  mirror: {
+    openscadParams: ['v'],
+    code: (params, children) => {
+      if (params.v.length === 2) {
+        return `mirror({normal: [${params.v[0]}, ${params.v[1]}, 0]}, ${children})\n`
+      }
+      return `mirror({normal: ${params.v}}, ${children})\n`
+    }
+  },
+  rotate: {
+    openscadParams: ['a', 'v'],
+    code: (params, children) => {
+      const degrees = convertVector3(params.a)
+      if (params.v) throw new Error('Rotate around vector is not yet implemented')
+      return `rotateDegrees(${degrees}, ${children})\n`
+    }
+  },
+  difference: {
+    openscadParams: [],
+    code: (params, children) => {
+      return `subtract(${children})\n`
+    }
+  },
+  intersection: {
+    openscadParams: [],
+    code: (params, children) => {
+      return `intersect(${children})\n`
+    }
+  },
+  cylinder: {
+    openscadParams: ['h', 'r1', 'r2', 'center'], // These are the only positional parameters, the others are named
+    code: (params) => {
+      const h = params.h || params.h
+      const r1 = params.r1 || params.r || (params.d && `${params.d} / 2`) || (params.d1 && `${params.d1} / 2`) || '1'
+      const r2 = params.r2 || (params.d2 && `${params.d2} / 2`)
+      const center = params.center || 'false'
+      // TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
+      const centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`)
+      if (r2) {
+        return `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})\n`
+      } else {
+        return `cylinder({height: ${h}, radius: ${r1}${centerStr}})\n`
+      }
+    }
+  },
+  echo: {
+    openscadParams: [],
+    code: (params) => {
+      return `console.log(${Object.entries(params).map(([key, value]) =>
+        `${(key === 'undefined') ? '' : key + ': '} ${value}`).join(', ')})\n`
+    }
+  }
+}
+
 export const jscadSyntax = {
-  ...commonSyntax,
+  ...commonSyntax.syntax,
 
   source_file: {
     open: dedent`
@@ -139,164 +230,7 @@ export const jscadSyntax = {
   },
   module_call: {
     generator: (node) => {
-      // const mapping = {
-      //   difference: (args) => `subtract(${args})`,
-      //   linear_extrude: (
-      //     args
-      //   ) => dedent`extrudeLinear( {height: ${generateCode(node.child(1).namedChild(0))}},
-      //   ${node
-      //     .child(1)
-      //     .namedChildren.slice(1)
-      //     .map((i) => generateCode(i))
-      //     .join(', ')}
-      //     )`,
-      //   polygon: (args) => `polygonEnsureCounterclockwise({points: ${args}})`,
-      //   mirror: (
-      //     args
-      //   ) => `mirror( {normal: ${generateCode(node.child(1).namedChild(0))}},
-      //   ${node
-      //     .child(1)
-      //     .namedChildren.slice(1)
-      //     .map((i) => generateCode(i))
-      //     .join(', ')}
-      //     )`,
-      //   rotate: (args) => dedent`rotateDegrees(${args})`
-      // }
-
-      const name = node.child(0).text
-      const argumentsNode = node.child(1)
-      let result
-      // if (name === 'linear_extrude') {
-      //   //For linear extrude, the first argument is the height, the rest are the objects
-      //   //TODO add support for named parameters
-      //   args = dedent`{height: ${generateCode(node.child(1).namedChild(0))}}, ${node.child(1).namedChildren.slice(1).map((i) => generateCode(i)).join(', ') }`
-      // }
-      // else {
-      // args = generateCode(node.child(1))
-      // const args = generateCode(argumentsNode);
-
-      // Map openscad function names and parameters to jscad
-
-      const convertVector3 = (value) => {
-        if (value === undefined) return ''
-        if (value.startsWith('[')) return value
-        return `[${value}, ${value}, ${value}]`
-      }
-      // Extract the arguments from the function call they can be passed a number of ways
-      const args = parseFunctionArguments(argumentsNode)
-      const parsedArgs = args.args
-      const children = args.children
-      // TODO: We may need a helper function to determine at runtime if size is a vector or a number. Center requires a vector
-      const centerString = (center, size) => { return (center?.toLowerCase() === 'true') ? '' : `, center: vec3.scale(vec3.create(), ${size}, 0.5),` }
-
-      const openscadModules = {
-        cube: {
-          openscadParams: ['size', 'center'],
-          jscadCode: (params) => {
-            params.size = convertVector3(params.size || '1') // Default
-            return `cuboid({size: ${params.size}${centerString(params.center, params.size)}})\n`
-          }
-        },
-        linear_extrude: {
-          openscadParams: ['height', 'v', 'center', 'convexity', 'twist', 'slices', 'scale', '$fn'],
-          jscadCode: (params, children) => {
-            return `extrudeLinear({height: ${params.height}}, ${children})\n`
-          }
-        },
-        polygon: {
-          openscadParams: ['points'],
-          jscadCode: (params) => {
-            return `polygonEnsureCounterclockwise({points: ${params.points}})\n`
-          }
-        },
-        mirror: {
-          openscadParams: ['v'],
-          jscadCode: (params, children) => {
-            if (params.v.length === 2) {
-              return `mirror({normal: [${params.v[0]}, ${params.v[1]}, 0]}, ${children})\n`
-            }
-            return `mirror({normal: ${params.v}}, ${children})\n`
-          }
-        },
-        rotate: {
-          openscadParams: ['a', 'v'],
-          jscadCode: (params, children) => {
-            const degrees = convertVector3(params.a)
-            if (params.v) throw new Error('Rotate around vector is not yet implemented')
-            return `rotateDegrees(${degrees}, ${children})\n`
-          }
-        },
-        difference: {
-          openscadParams: [],
-          jscadCode: (params, children) => {
-            return `subtract(${children})\n`
-          }
-        },
-        intersection: {
-          openscadParams: [],
-          jscadCode: (params, children) => {
-            return `intersect(${children})\n`
-          }
-        },
-        cylinder: {
-          openscadParams: ['h', 'r1', 'r2', 'center'], // These are the only positional parameters, the others are named
-          jscadCode: (params) => {
-            const h = params.h || params.h
-            const r1 = params.r1 || params.r || (params.d && `${params.d} / 2`) || (params.d1 && `${params.d1} / 2`) || '1'
-            const r2 = params.r2 || (params.d2 && `${params.d2} / 2`)
-            const center = params.center || 'false'
-            // TODO - the center is actually the middle of (x2 - x1), (y2 - y1), (z2 - z1), or for a cylinder r, r, h/2
-            const centerStr = centerString(center, `[${r1}, ${r1}, ${h}]`)
-            if (r2) {
-              return `cylinderElliptic({height: ${h}, startRadius: [${r1}, ${r1}], endRadius: [${r2},${r2}]${centerStr}})\n`
-            } else {
-              return `cylinder({height: ${h}, radius: ${r1}${centerStr}})\n`
-            }
-          }
-        },
-        echo: {
-          openscadParams: [],
-          jscadCode: (params) => {
-            return `console.log(${Object.entries(params).map(([key, value]) =>
-              `${(key === 'undefined') ? '' : key + ': '} ${value}`).join(', ')})\n`
-          }
-        }
-      }
-
-      const openScadModule = openscadModules[name]
-      if (openScadModule) {
-        const namedArgs = {}
-        // Args can be positional or named (once an argument is named, all following arguments must be named)
-        for (let i = 0; i < parsedArgs.length; i++) {
-          let namedArg, value
-          if (parsedArgs[i] !== undefined) { // if parsedArgs[i] is undefined, it's a named argument
-            // Convert positioned arguments to named arguments
-            namedArg = openScadModule.openscadParams[i]
-            value = parsedArgs[i]
-          } else {
-            namedArg = Object.keys(parsedArgs)[i]
-            value = parsedArgs[namedArg]
-          }
-          namedArgs[namedArg] = value
-        }
-
-        // Get the jscad value for each argumen
-        result = openScadModule.jscadCode(namedArgs, children)
-      } else {
-        const args = node.namedChildren.slice(1).map(generateCode).join(', ')
-        result = `${name}(\n${tabbed(args)}\n)`
-      }
-
-      // if (moduleNames.includes(name)) { // If the module name is function in the file
-      //   return `\n...${name}(${args})`
-      // } else {
-      //   return `\n${name}(${parsedArgs})`
-      // }
-      // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
-      if (node.parent?.parent?.type == 'union_block') {
-        result = result + ','
-      }
-      return result
+      return commonSyntax.moduleCallGenerator(node, openscadModulesJscad)
     }
   },
   union_block: {
@@ -430,7 +364,7 @@ export const jscadSyntax = {
   }
 }
 
-export function getCodeFormats(jscadCode) {
+export function getCodeFormats(jscadCode: string) {
   const outputJs = dedent`
   import jscad from '@jscad/modeling'
   export function main() {

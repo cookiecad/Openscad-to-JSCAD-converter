@@ -27,8 +27,8 @@ This will create the jscad file and some other formats in the output folder. You
 
 **How it works**
 Openscad code is parsed using the tree-sitter-openscad library.
-grammarToJscadSyntax.js converts the openscad grammar to jscad syntax. 
-This is mostly used as a starting point and allows simple mappings to work without additional code. More complex syntax conversions are done by overriding the generated syntax in jscadSyntax.js
+grammarToJscadSyntax.ts converts the openscad grammar to jscad syntax. 
+This is mostly used as a starting point and allows simple mappings to work without additional code. More complex syntax conversions are done by overriding the generated syntax in jscadSyntax.ts
 
 # Other parser / generator tools considered
 Nearly

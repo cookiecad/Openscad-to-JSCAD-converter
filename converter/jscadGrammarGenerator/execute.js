@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { translate } from './grammarToJscadSyntax.js';
+import { translate } from './grammarToJscadSyntax';
 import openscadGrammar from "tree-sitter-openscad/src/grammar.json" with { type: "json" }
 
 try {
