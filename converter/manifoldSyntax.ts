@@ -11,6 +11,22 @@ const openscadModulesManifold: commonSyntax.OpenScadModules = {
       return `cube(${params.size},${params.center || false})\n`
     }
   },
+  cylinder: {
+    openscadParams: ['h', 'r1', 'r2', 'center', '$fn'],
+    code: (params) => {
+      const h = params.h
+      const r1 = params.r1 || params.r || (params.d && `${params.d} / 2`) || (params.d1 && `${params.d1} / 2`) || '1'
+      const r2 = params.r2 || (params.d2 && `${params.d2} / 2`)
+      const center = params.center || 'false'
+
+      if (r2 || params.$fn || params.center) {
+        return `cylinder(${h}, ${r1}, ${r2 || '0'}, ${params.$fn || 'null'}, ${center})\n`
+      } else {
+        return `cylinder(${h}, ${r1})\n`
+      }
+    }
+
+  }
 }
 
 export const manifoldSyntax: generatorSyntax = {
@@ -18,7 +34,7 @@ export const manifoldSyntax: generatorSyntax = {
 
   source_file: {
     open: dedent`
-      const {cube, sphere, union} = Manifold;
+      const {cube, cylinder, sphere, union} = Manifold;
       const jscadObjects = [];\n`,
     close: '\nconst result = union(jscadObjects);\n',
     children: 'all',
