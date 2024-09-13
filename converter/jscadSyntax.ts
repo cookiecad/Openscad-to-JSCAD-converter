@@ -48,6 +48,12 @@ const openscadModulesJscad: commonSyntax.OpenScadModules = {
       return `polygonEnsureCounterclockwise({points: ${params.points}})\n`
     }
   },
+  translate: {
+    openscadParams: ['v'],
+    code: (params, children) => {
+      return `translate(${params.v}, ${children})\n`
+    }
+  },
   mirror: {
     openscadParams: ['v'],
     code: (params, children) => {

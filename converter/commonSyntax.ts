@@ -22,8 +22,9 @@ export const moduleCallGenerator = (node: SyntaxNode, openscadModules: OpenScadM
   const { args, children } = parsedArgs
 
   let result: string
+  openscadModules = { ...commonOpenscadModules, ...openscadModules }
   const openscadModule = openscadModules[name]
-  if (openscadModule) {
+  if (openscadModule !== undefined) {
     const openscadModule = openscadModules[name]
 
     const namedArgs: any = {}
@@ -44,15 +45,26 @@ export const moduleCallGenerator = (node: SyntaxNode, openscadModules: OpenScadM
     // Get the generated value for each argument
     result = openscadModule.code(namedArgs, children)
   } else {
-    const comment = `/* ${name} not implemented: ${node.text} */`
-    return comment
-    // result = `${name}(\n${tabbed(argsCode)}\n)`
+    // const comment = `/* ${name} not implemented: ${node.text} */`
+    // return comment
+    const args = node.namedChildren.slice(1).map(generateCode).join(', ')
+    result = `${name}(${tabbed(args)})`
   }
   // The parent of the module call will be transform_chain. If the transform_chanins parent is union_block we need a comma
   if (node.parent?.parent?.type == 'union_block') {
     result = result + ','
   }
   return result
+}
+
+const commonOpenscadModules: OpenScadModules = {
+  render: {
+    // Skip outputting the render function
+    openscadParams: [],
+    code: (params, children) => {
+      return `${children}`
+    }
+  }
 }
 
 export const syntax: generatorSyntax = {
@@ -149,6 +161,5 @@ export const syntax: generatorSyntax = {
     separator: ' '
   },
   operator: {
-  }
-
+  },
 }
