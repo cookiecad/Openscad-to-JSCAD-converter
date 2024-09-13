@@ -20,12 +20,17 @@ const openscadModulesManifold: commonSyntax.OpenScadModules = {
       const center = params.center || 'false'
 
       if (r2 || params.$fn || params.center) {
-        return `cylinder(${h}, ${r1}, ${r2 || '0'}, ${params.$fn || 'null'}, ${center})\n`
+        return `cylinder(${h}, ${r1}, ${r2 || '0'}, ${params.$fn || 'null'}, ${center})`
       } else {
-        return `cylinder(${h}, ${r1})\n`
+        return `cylinder(${h}, ${r1})`
       }
     }
-
+  },
+  mirror: {
+    openscadParams: ['v'],
+    code: (params, children) => {
+      return `${children}\t.mirror(${params.v})`; 
+    }
   }
 }
 
