@@ -9,7 +9,8 @@ import { SyntaxNode } from './types'
 let syntax: typeof jscadSyntax | typeof manifoldSyntax
 
 export function generateTreeCode (node: SyntaxNode, language: 'jscad' | 'manifold') {
-  let getCodeFormats: (code: string) => { [key: string]: string }
+  type CodeFormat = 'jscadCode' | 'jsCode' | 'caditCode' | 'manifoldCode'
+  let getCodeFormats: (code: string) => { [K in CodeFormat]?: string }   
   if (language === 'jscad') {
     syntax = jscadSyntax
     getCodeFormats = getCodeFormatsJscad
@@ -22,44 +23,49 @@ export function generateTreeCode (node: SyntaxNode, language: 'jscad' | 'manifol
   return { code, formats, node }
 }
 
-export function generateCode (node: SyntaxNode) {
+export function generateCode (node: SyntaxNode): string {
   if (!node) {
     throw new Error('Node not provided')
   }
   const type = node.type
-  if (!syntax[type]) {
-    const e = new Error(`Syntax not found for type: ${type}`)
+  if (!(type in syntax)) {
+    const e: any = new Error(`Syntax not found for type: ${type}`)
     e.node = node
     throw e
   }
-
-  // if (STOP_PROCESSIMG) { return; }
+  const syntaxElement = syntax[type as keyof typeof syntax]
 
   try {
     process.stdout.write(`${node.type} `)
     let result = ''
 
-    const open = syntax[type]?.open || ''
-    const close = syntax[type]?.close || ''
-    const separator = syntax[type]?.separator || ''
-    if ('generator' in syntax[type]) {
-      result = syntax[type].generator!(node)
-    } else if ('children' in syntax[type]) {
+    const open = syntaxElement?.open || ''
+    const close = syntaxElement?.close || ''
+    const separator = syntaxElement?.separator || ''
+
+    if ('generator' in syntaxElement) {
+      result = syntaxElement.generator!(node)
+    } else if ('children' in syntaxElement) {
       const children =
-        syntax[type].children === 'all'
+        syntaxElement.children === 'all'
           ? node.namedChildren.map((namedChild) => generateCode(namedChild))
-          : syntax[type].children!.map((child) => {
-            const childNode = child.hasOwnProperty('childIndex')
-              ? node.children[child.childIndex]
-              : node[child.name]
-            if (!childNode) {
-              throw new {
-                ...Error(`Child node not found: ${child.name}`),
-                node
-              }()
-            }
-            return child.isText ? childNode.text : generateCode(childNode)
-          })
+          : syntaxElement.children!.map((child) => {
+              const childNode =
+                'childIndex' in child
+                  ? node.children[child.childIndex as number]
+                  : (node as any)[child.name as keyof SyntaxNode]
+              if (!childNode) {
+                throw {
+                  ...(new Error(`Child node not found: ${child.name}`)),
+                  node,
+                }
+              }
+              return child.isText
+                ? typeof childNode === 'object' && 'text' in childNode
+                  ? childNode.text
+                  : childNode
+                : generateCode(childNode)
+            })
       result = `${open}${children.join(separator)}${close}`
     } else {
       result = node.text
@@ -67,14 +73,14 @@ export function generateCode (node: SyntaxNode) {
 
     node.outputCode = result
     return result
-  } catch (error) {
+  } catch (error: any) {
     if (error.node) {
       node = error.node
     }
     process.stdout.write('\n')
     out('red', 'node type: ')
     console.log(`${node.type}, text: ${node.text}`)
-    const rule = grammar.rules[node.type]
+    const rule = (grammar as any).rules[node.type]
     if (rule) {
       out('red', 'Grammar rule: ')
       console.log(`${JSON.stringify(rule)}`)
@@ -85,25 +91,25 @@ export function generateCode (node: SyntaxNode) {
   }
 }
 
-export function generateFunctionCall (node: SyntaxNode) {
+export function generateFunctionCall(node: SyntaxNode): string {
   // We can probably share code with module call
 
-  const functionName = node.child(0)?.text
-  const args = []
+  const functionName: string = node.child(0)?.text || '';
+  const args: string[] = []
   for (let i = 1; i < node.children.length; i++) {
     args.push(generateCode(node.children[i]))
   }
   // if (functionName === 'cube') {
   //   return `CSG.${functionName}({size: [${args.join(', ')}]})`;
   // } else
-  if (functionName === 'sphere') {
-    return `CSG.${functionName}({radius: ${args[0]}})`
-  } else if (functionName === 'cylinder') {
-    return `CSG.${functionName}({radius: ${args[0]}, height: ${args[1]}})`
-  } else if (functionName === 'len') {
-    return `${args[0]}.length`
-  } else {
-    const mapping = {
+  // if (functionName === 'sphere') {
+  //   return `CSG.${functionName}({radius: ${args[0]}})`
+  // } else if (functionName === 'cylinder') {
+  //   return `CSG.${functionName}({radius: ${args[0]}, height: ${args[1]}})`
+  // } else if (functionName === 'len') {
+  //   return `${args[0]}.length`
+  // } else {
+    const mapping: { [key: string]: (string | (() => string) )} = { 
       floor: 'Math.floor',
       ceil: 'Math.ceil',
       abs: 'Math.abs',
@@ -122,13 +128,14 @@ export function generateFunctionCall (node: SyntaxNode) {
       sqrt: 'Math.sqrt',
       PI: 'Math.PI',
       atan2: 'Math.atan2',
-      round: 'Math.round'
+      round: 'Math.round',
+      len: () => `${args[0]}.length`,
 
       // Add more mappings here
     }
     const mappedName = mapping[functionName] || functionName
     return `${mappedName}(${args.join(', ')})`
-  }
+  // }
 }
 
 export function parseFunctionArguments (node: SyntaxNode) {

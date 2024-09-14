@@ -67,11 +67,12 @@ const commonOpenscadModules: OpenScadModules = {
   }
 }
 
+//delete generatedSyntax._item;
 export const syntax: generatorSyntax = {
   ...generatedSyntax,
 
   transform_chain: {
-    generator: (node: SyntaxNode) => {
+    generator: (node) => {
       let result
       startTransformChain()
       const child0 = node.namedChildren?.[0]

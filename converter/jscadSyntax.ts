@@ -3,10 +3,7 @@ import { helperFunctions, startNewScope, endCurrentScope, inTransformChain, star
 import { tabbed } from './nodeHelpers.js'
 import * as commonSyntax from './commonSyntax'
 import dedent from 'dedent'
-
-/**
- * @type {import('./types').generatorSyntax}
- */
+import { generatorSyntax } from './types'
 
 const convertVector3 = (value: string): string => {
   if (value === undefined) return ''
@@ -108,7 +105,7 @@ const openscadModulesJscad: commonSyntax.OpenScadModules = {
   }
 }
 
-export const jscadSyntax = {
+export const jscadSyntax: generatorSyntax = {
   ...commonSyntax.syntax,
 
   source_file: {
