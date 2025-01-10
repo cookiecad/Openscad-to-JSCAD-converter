@@ -3,7 +3,7 @@ import { helperFunctions, startNewScope, endCurrentScope, inTransformChain, star
 import { tabbed } from './nodeHelpers.js'
 import * as commonSyntax from './commonSyntax'
 import dedent from 'dedent'
-import { generatorSyntax } from './types'
+import type { generatorSyntax } from './types'
 
 const convertVector3 = (value: string): string => {
   if (value === undefined) return ''

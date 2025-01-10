@@ -1,20 +1,6 @@
 {
-  "extends": "standard-with-typescript",
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "project": "./tsconfig.json"
-  },
-  "rules": {
-    "@typescript-eslint/strict-boolean-expressions": [
-      "error",
-      {
-        "allowString": true,
-        "allowNumber": true,
-        "allowNullableObject": true,
-        "allowNullableBoolean": true,
-        "allowNullableNumber": true,
-        "allowNullableString": true,
-        "allowAny": false
-      }
-    ]
   }
 }

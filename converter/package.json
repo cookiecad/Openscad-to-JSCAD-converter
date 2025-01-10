@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "convert": "tsx cli.ts",
-    "test": "mocha 'test/**/*.test.ts'",
+    "test": "mocha 'test/**/*.test.ts' --require tsx/cjs",
     "lint": "standard --fix",
     "update-grammar": "node jscadGrammarGenerator/execute.js"
   },

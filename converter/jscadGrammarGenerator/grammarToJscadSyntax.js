@@ -3,7 +3,7 @@ import { getChildIndex, findValueByType, getStringMemberValue, findContentNameBy
 // Handlers for different member types
 const memberHandlers = {
   SYMBOL: (member) => ({ type: 'symbol', name: member.name }),
-  SEQ: (member) => ({ type: 'seq', members: translateSEQ(member) }),
+  SEQ: (member, baseIndex) => ({ type: 'seq', members: translateSEQ(member, baseIndex) }),
   FIELD: (member) => ({ type: 'field', name: member.name, content: member.content }),
   STRING: (member) => ({ type: 'string', value: member.value }),
   ALIAS: (member) => ({
@@ -11,38 +11,38 @@ const memberHandlers = {
     name: member.name,
     content: member.content.type === 'SYMBOL' ? { type: 'symbol', name: member.content.name } : member.content
   }),
-  CHOICE: (member) => ({
+  CHOICE: (member, baseIndex) => ({
     type: 'choice',
-    choices: translateCHOICE(member).choices
+    choices: translateCHOICE(member, baseIndex).choices
   }),
   PREC: (member) => ({
     type: 'prec',
     precedence: member.value,
-    content: translateChoiceLikeContent(member.content)
+    content: translateChoiceLikeContent(member.content, 0) // baseIndex may vary
   }),
   PREC_LEFT: (member) => ({
     type: 'prec_left',
     precedence: member.value,
-    content: translateChoiceLikeContent(member.content)
+    content: translateChoiceLikeContent(member.content, 0) // baseIndex may vary
   }),
   BLANK: () => ({ type: 'blank' }),
   TOKEN: (member) => ({
     type: 'token',
-    content: translateChoiceLikeContent(member.content)
+    content: translateChoiceLikeContent(member.content, 0) // baseIndex may vary
   })
 }
 
-function translateChoiceLikeContent (content) {
+function translateChoiceLikeContent (content, baseIndex) { // Added baseIndex parameter
   if (content.type === 'SEQ') {
-    return translateSEQ(content)
+    return translateSEQ(content, baseIndex) // Pass baseIndex
   } else if (content.type === 'CHOICE') {
-    return translateCHOICE(content)
+    return translateCHOICE(content, baseIndex) // Pass baseIndex if needed
   } else if (content.type === 'SYMBOL') {
     return { type: 'symbol', name: content.name }
   } else if (content.type === 'PATTERN') {
     return translatePATTERN(content)
   } else if (content.type === 'PREC') {
-    return memberHandlers.PREC(content) // Use the PREC handler for nested PREC
+    return memberHandlers.PREC(content)
   } else if (content.type === 'PREC_LEFT') {
     return memberHandlers.PREC_LEFT(content)
   } else if (memberHandlers[content.type]) {
@@ -52,14 +52,15 @@ function translateChoiceLikeContent (content) {
   }
 }
 
-function translateCHOICE (def) {
+function translateCHOICE (def, baseIndex = 0) { // Added baseIndex parameter
   if (!def.members || !Array.isArray(def.members)) {
     throw new Error('Invalid structure for CHOICE definition')
   }
 
   const choices = def.members.map(member => {
     if (memberHandlers[member.type]) {
-      return memberHandlers[member.type](member)
+      // Pass baseIndex if needed
+      return memberHandlers[member.type](member, baseIndex)
     } else {
       throw new Error(`Unhandled member type ${member.type} in CHOICE`)
     }
@@ -67,14 +68,20 @@ function translateCHOICE (def) {
   return { type: 'choice', choices }
 }
 
-function translateSEQ (def) {
+function translateSEQ (def, baseIndex = 0) {
   if (!def.members || !Array.isArray(def.members)) {
     throw new Error('Invalid structure for SEQ definition')
   }
 
   const open = getStringMemberValue(def.members, 0)
   const close = getStringMemberValue(def.members, def.members.length - 1)
-  const children = findChildrenSEQ(def.members)
+
+  // Slice to exclude 'open' and 'close'
+  const innerMembers = def.members.slice(1, def.members.length - 1)
+
+  // Pass the starting index for inner members
+  const children = findChildrenSEQ(innerMembers, baseIndex + 1)
+
   return { open, close, children, separator: '' }
 }
 
@@ -133,7 +140,7 @@ function translatePREC_LEFT (def) { // eslint-disable-line camelcase
   }
 }
 
-function findChildrenSEQ (members) {
+function findChildrenSEQ (members, baseIndex = 0) {
   const repeatContentName = findContentNameByType(members, 'REPEAT')
   if (repeatContentName === '_item') { return 'all' }
 
@@ -141,24 +148,28 @@ function findChildrenSEQ (members) {
   for (let i = 0; i < members.length; i++) {
     const member = members[i]
 
+    // Calculate the actual child index based on the outer SEQ
+    const actualIndex = baseIndex + i
+
     if (member.type === 'SYMBOL') {
       allChildren.push({
-        childIndex: getChildIndex(members, member.name),
+        childIndex: actualIndex,
         name: member.name,
         optional: false
       })
     } else if (member.type === 'FIELD' || member.type === 'CHOICE') {
       allChildren.push({
-        childIndex: getFieldIndex(members, member.name),
-        name: member.name,
+        childIndex: actualIndex,
+        name: member.name || 'choice',
         optional: false
       })
     } else if (member.type === 'SEQ') {
-      allChildren = [...allChildren, ...findChildrenSEQ(member.members)]
+      // For nested SEQ, pass the current actualIndex as the new baseIndex
+      allChildren = [...allChildren, ...findChildrenSEQ(member.members, actualIndex)]
     } else if (member.type === 'STRING' && i !== 0 && i !== members.length - 1) {
       allChildren.push({
-        childIndex: i,
-        name: `string${i}`,
+        childIndex: actualIndex,
+        name: `string${actualIndex}`,
         optional: false
       })
     }
@@ -177,7 +188,8 @@ export function translate (data) {
   for (const [name, definition] of Object.entries(definitions)) {
     if (handlers[definition.type]) {
       try {
-        jscadSyntax[name] = handlers[definition.type](definition)
+        // Start with baseIndex = 0 for top-level rules
+        jscadSyntax[name] = handlers[definition.type](definition, 0)
       } catch (error) {
         console.error(`Error processing ${name}:`, error)
       }

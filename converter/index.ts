@@ -8,7 +8,7 @@ import dedent from 'dedent'
 
 import { generateTreeCode } from './codeGeneration'
 
-type JscadSyntaxNode = SyntaxNode & { jscadCode?: string }
+type JscadSyntaxNode = SyntaxNode & { outputCode?: string }
 export type { Tree, JscadSyntaxNode }
 
 let parser: Parser
@@ -33,8 +33,8 @@ async function init () {
 export async function parseOpenSCAD (options: { code: string, language: 'jscad' | 'manifold' }) {
   await init()
   const { code, language } = options
-  let outputCode, tree, newRootNode, formats
-  tree = parser.parse(code)
+  let outputCode, newRootNode, formats
+  const tree = parser.parse(code)
 
   try {
     // Traverse the syntax tree and generate JSCAD code
@@ -42,12 +42,14 @@ export async function parseOpenSCAD (options: { code: string, language: 'jscad' 
   } catch (e: any) {
     console.log('tree', code)
     console.error('Error generating JSCAD code:', e)
+    const errorNode = (e?.node !== undefined) && e.node
+
     if (e instanceof Error) {
       e.message = `Error generating JSCAD code: ${e.message}`
     } else {
       e = new Error(`Error generating JSCAD code: ${e}`)
     }
-    Object.assign(e, { data: { tree } })
+    Object.assign(e, { data: { tree }, errorNode })
     throw e
   }
   try {

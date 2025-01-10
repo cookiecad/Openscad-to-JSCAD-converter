@@ -1,8 +1,9 @@
 {
   "name": "converter-ui",
   "scripts": {
-    "lint": "ts-standard",
-    "lint:fix": "ts-standard --fix --env mocha",
+    "prepare": "husky install",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "preinstall": "npx only-allow pnpm"
   },
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
@@ -10,12 +11,12 @@
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
     "eslint": "^8.57.0",
-    "eslint-config-standard": "^17.1.0",
-    "eslint-config-standard-with-typescript": "^43.0.1",
-    "eslint-plugin-import": "^2.30.0",
-    "eslint-plugin-n": "^17.10.2",
-    "eslint-plugin-promise": "^7.1.0",
-    "ts-standard": "^12.0.2",
+    "husky": "^9.1.7",
     "typescript": "^5.5.4"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run lint:fix"
+    }
   }
 }

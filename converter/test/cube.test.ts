@@ -27,7 +27,7 @@ const parseSCAD = (scadcode: string, dump = false): string => {
   const tree = parser.parse(scadcode)
 
   // Traverse the syntax tree and generate JSCAD code
-  const jscadcode = generateTreeCode(tree.rootNode, 'jscad').formats.jsCode; // code
+  const jscadcode = generateTreeCode(tree.rootNode, 'jscad').formats.jsCode // code
   if (dump) {
     console.log('==================================================')
     console.log(dumpNode(tree.rootNode, 0))
@@ -39,11 +39,11 @@ const parseSCAD = (scadcode: string, dump = false): string => {
 }
 
 for (const file of files) {
-  describe(`Testing ${file}`, function () { 
-    const filepath = path.resolve(__dirname, file);
+  describe(`Testing ${file}`, function () {
+    const filepath = path.resolve(__dirname, file)
     const scadcode = fs.readFileSync(filepath, 'UTF8')
 
-    console.log("Parsing SCAD code...");
+    console.log('Parsing SCAD code...')
     const jscadcode = parseSCAD(scadcode, false)
 
     // describe('parseSCAD()', function () {
@@ -52,36 +52,62 @@ for (const file of files) {
     //   })
     // })
 
-    describe('Run the code', function() {
-      it('should execute without throwing errors', async function() {
-        // Try evaluating the generated code
-          try {
-            const tempFilePath = path.join(__dirname, 'tempCode.mjs');
-            fs.writeFileSync(tempFilePath, jscadcode);
-
-            try {
-              const m = await import(`file://${tempFilePath}`);
-              const result = m.main();
-              // console.log("result", result);
-            } catch (err) {
-              assert.fail(`Exception thrown during execution: ${err.message}`);
-            } finally {
-              fs.unlinkSync(tempFilePath);
-            }
-          } catch (err) {
-            // Log the error, code, and line number
-            console.error('An error occurred while executing the code:');
-            console.error(jscadcode); // Print the dynamic code
-            console.error('Error message:', err.message);
-            console.error('Stack trace:', err.stack); // Stack trace includes line number
-
-            // You can add more sophisticated handling here if needed
-            assert.fail(`Exception thrown during execution: ${err.message}`);
-          }
-            // },);
+    describe('Generated code validation', function () {
+      it('should generate valid JSCAD code structure', function () {
+        // Verify basic structural elements
+        assert.ok(jscadcode.includes('function main()'), 'Should have a main function')
+        assert.ok(jscadcode.includes('return'), 'Should have a return statement')
+        
+        // Check for balanced braces/parentheses
+        const openBraces = (jscadcode.match(/\{/g) || []).length
+        const closeBraces = (jscadcode.match(/\}/g) || []).length
+        const openParens = (jscadcode.match(/\(/g) || []).length
+        const closeParens = (jscadcode.match(/\)/g) || []).length
+        
+        assert.strictEqual(openBraces, closeBraces, 'Braces should be balanced')
+        assert.strictEqual(openParens, closeParens, 'Parentheses should be balanced')
+        
+        // Check for common JSCAD patterns
+        assert.ok(
+          /function\s+main\s*\(\s*\)\s*\{/.test(jscadcode),
+          'Should have properly formatted main function'
+        )
+        assert.ok(
+          /return\s+[^;]+;/.test(jscadcode),
+          'Should have a return statement with a value'
+        )
       })
     })
-})
+    describe('Run the code', function () {
+      it('should execute without throwing errors', async function () {
+        // Try evaluating the generated code
+        try {
+          const tempFilePath = path.join(__dirname, 'tempCode.mjs')
+          fs.writeFileSync(tempFilePath, jscadcode)
+
+          try {
+            const m = await import(`file://${tempFilePath}`)
+            const result = m.main()
+            // console.log("result", result);
+          } catch (err) {
+            assert.fail(`Exception thrown during execution: ${err.message}`)
+          } finally {
+            fs.unlinkSync(tempFilePath)
+          }
+        } catch (err) {
+          // Log the error, code, and line number
+          console.error('An error occurred while executing the code:')
+          console.error(jscadcode) // Print the dynamic code
+          console.error('Error message:', err.message)
+          console.error('Stack trace:', err.stack) // Stack trace includes line number
+
+          // You can add more sophisticated handling here if needed
+          assert.fail(`Exception thrown during execution: ${err.message}`)
+        }
+        // },);
+      })
+    })    
+  })
 }
 
 // describe('function() conversion', function () {

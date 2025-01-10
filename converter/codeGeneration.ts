@@ -4,13 +4,13 @@ import { manifoldSyntax, getCodeFormats as getCodeFormatsJManifold } from './man
 import grammar from 'tree-sitter-openscad/src/grammar.json' with { type: 'json' }
 
 import { out } from './utils.js'
-import { SyntaxNode } from './types'
+import type { SyntaxNode } from './types'
 
 let syntax: typeof jscadSyntax | typeof manifoldSyntax
 
 export function generateTreeCode (node: SyntaxNode, language: 'jscad' | 'manifold') {
   type CodeFormat = 'jscadCode' | 'jsCode' | 'caditCode' | 'manifoldCode'
-  let getCodeFormats: (code: string) => { [K in CodeFormat]?: string }   
+  let getCodeFormats: (code: string) => { [K in CodeFormat]?: string }
   if (language === 'jscad') {
     syntax = jscadSyntax
     getCodeFormats = getCodeFormatsJscad
@@ -50,22 +50,22 @@ export function generateCode (node: SyntaxNode): string {
         syntaxElement.children === 'all'
           ? node.namedChildren.map((namedChild) => generateCode(namedChild))
           : syntaxElement.children!.map((child) => {
-              const childNode =
+            const childNode =
                 'childIndex' in child
                   ? node.children[child.childIndex as number]
                   : (node as any)[child.name as keyof SyntaxNode]
-              if (!childNode) {
-                throw {
-                  ...(new Error(`Child node not found: ${child.name}`)),
-                  node,
-                }
+            if (!childNode) {
+              throw {
+                ...(new Error(`Child node not found: ${child.name}`)),
+                node
               }
-              return child.isText
-                ? typeof childNode === 'object' && 'text' in childNode
-                  ? childNode.text
-                  : childNode
-                : generateCode(childNode)
-            })
+            }
+            return child.isText
+              ? typeof childNode === 'object' && 'text' in childNode
+                ? childNode.text
+                : childNode
+              : generateCode(childNode)
+          })
       result = `${open}${children.join(separator)}${close}`
     } else {
       result = node.text
@@ -85,16 +85,16 @@ export function generateCode (node: SyntaxNode): string {
       out('red', 'Grammar rule: ')
       console.log(`${JSON.stringify(rule)}`)
     }
-    error.message = `Error in generateCode: ${error.message}\n node type: ${node.type}, text: ${node.text}
+    error.message = `Error in generateCode: ${error.message}\n node type: ${node.type}, text: ${node.text}, line: ${node.startPosition.row}, column: ${node.startPosition.column}
     grammar rule: ${JSON.stringify(rule)}`
     throw error
   }
 }
 
-export function generateFunctionCall(node: SyntaxNode): string {
+export function generateFunctionCall (node: SyntaxNode): string {
   // We can probably share code with module call
 
-  const functionName: string = node.child(0)?.text || '';
+  const functionName: string = node.child(0)?.text || ''
   const args: string[] = []
   for (let i = 1; i < node.children.length; i++) {
     args.push(generateCode(node.children[i]))
@@ -109,32 +109,32 @@ export function generateFunctionCall(node: SyntaxNode): string {
   // } else if (functionName === 'len') {
   //   return `${args[0]}.length`
   // } else {
-    const mapping: { [key: string]: (string | (() => string) )} = { 
-      floor: 'Math.floor',
-      ceil: 'Math.ceil',
-      abs: 'Math.abs',
-      sin: 'Math.sin',
-      cos: 'Math.cos',
-      tan: 'Math.tan',
-      asin: 'Math.asin',
-      acos: 'Math.acos',
-      atan: 'Math.atan',
-      exp: 'Math.exp',
-      log: 'Math.log',
-      pow: 'Math.pow',
-      min: 'Math.min',
-      max: 'Math.max',
-      random: 'Math.random',
-      sqrt: 'Math.sqrt',
-      PI: 'Math.PI',
-      atan2: 'Math.atan2',
-      round: 'Math.round',
-      len: () => `${args[0]}.length`,
+  const mapping: { [key: string]: (string | (() => string)) } = {
+    floor: 'Math.floor',
+    ceil: 'Math.ceil',
+    abs: 'Math.abs',
+    sin: 'Math.sin',
+    cos: 'Math.cos',
+    tan: 'Math.tan',
+    asin: 'Math.asin',
+    acos: 'Math.acos',
+    atan: 'Math.atan',
+    exp: 'Math.exp',
+    log: 'Math.log',
+    pow: 'Math.pow',
+    min: 'Math.min',
+    max: 'Math.max',
+    random: 'Math.random',
+    sqrt: 'Math.sqrt',
+    PI: 'Math.PI',
+    atan2: 'Math.atan2',
+    round: 'Math.round',
+    len: () => `${args[0]}.length`
 
-      // Add more mappings here
-    }
-    const mappedName = mapping[functionName] || functionName
-    return `${mappedName}(${args.join(', ')})`
+    // Add more mappings here
+  }
+  const mappedName = mapping[functionName] || functionName
+  return `${mappedName}(${args.join(', ')})`
   // }
 }
 

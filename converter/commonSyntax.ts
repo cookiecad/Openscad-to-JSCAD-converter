@@ -4,7 +4,7 @@ import { getAllProperties, customNodeCopy, tabbed } from './nodeHelpers.js'
 
 import generatedSyntax from './syntaxFromGrammar.js'
 import dedent from 'dedent'
-import { generatorSyntax, SyntaxNode } from 'types'
+import type { generatorSyntax, SyntaxNode } from './types'
 
 export interface OpenScadModule {
   openscadParams: string[]
@@ -67,9 +67,27 @@ const commonOpenscadModules: OpenScadModules = {
   }
 }
 
-//delete generatedSyntax._item;
+// delete generatedSyntax._item;
+// Filter out properties that don't match the generatorSyntax type
+const filteredSyntax = Object.fromEntries(
+  Object.entries(generatedSyntax).map(([key, value]) => {
+    if ('type' in value) {
+      // Handle complex syntax elements (like choice types)
+      return [key, { }];
+    } else {
+      // Handle simple syntax elements
+      return [key, {
+        open: value.open || '',
+        close: value.close || '',
+        separator: value.separator || '',
+        children: value.children || []
+      }];
+    }
+  })
+);
+
 export const syntax: generatorSyntax = {
-  ...generatedSyntax,
+  ...filteredSyntax,
 
   transform_chain: {
     generator: (node) => {
@@ -162,5 +180,5 @@ export const syntax: generatorSyntax = {
     separator: ' '
   },
   operator: {
-  },
+  }
 }
